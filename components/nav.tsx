@@ -25,7 +25,7 @@ export function Navbar() {
 
   // Improved scroll handler with debounce
   const handleScroll = useCallback(() => {
-    // Update navbar background
+    // Update navbar background 
     const isScrolled = window.scrollY > 10;
     if (isScrolled !== scrolled) {
       setScrolled(isScrolled);
