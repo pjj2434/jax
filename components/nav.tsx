@@ -15,6 +15,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Home", sectionId: "hero" },
   { label: "Events", sectionId: "events" },
+  { label: "About", sectionId: "about" },
+  { label: "contact", sectionId: "contact" },
   // Add more sections as needed
 ];
 
