@@ -14,7 +14,7 @@ export async function GET() {
     
     if (banners.length === 0) {
       return NextResponse.json({ 
-        message: "Welcome to First Impressions Resume Writing!",
+        message: "Welcome to Jax!",
         isActive: false,
         backgroundColor: "#3B82F6",
         textColor: "#FFFFFF",

@@ -179,7 +179,7 @@ export default function HomePage() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
-              JAX Darts Bar
+              JAX  Bar
             </motion.h1>
             <motion.p 
               className="text-xl md:text-2xl mb-8 text-white/90"
@@ -486,7 +486,7 @@ export default function HomePage() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            About JAX Darts Bar
+            About JAX 
           </motion.h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -515,7 +515,7 @@ export default function HomePage() {
             >
               <h3 className="text-2xl font-semibold border-l-4 border-primary pl-3">The Premier Darts Destination</h3>
               <p className="text-gray-300">
-                JAX Darts Bar is the ultimate destination for dart enthusiasts of all skill levels. 
+                JAX  Bar is the ultimate destination for dart enthusiasts of all skill levels. 
                 Established in 2015, we've built a community around the love of the game, offering 
                 professional-grade equipment, expert instruction, and a vibrant atmosphere.
               </p>
@@ -734,7 +734,7 @@ export default function HomePage() {
             <div className="mb-4 md:mb-0">
               <Image 
                 src="/logo.png" // Replace with your logo
-                alt="JAX Darts Bar"
+                alt="JAX  Bar"
                 width={120}
                 height={40}
                 className="h-8 w-auto"

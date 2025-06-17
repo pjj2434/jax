@@ -22,7 +22,7 @@ export async function getBannerData(): Promise<MessageBannerData | null> {
       // Create a default banner if none exists
       const defaultBanner = {
         id: nanoid(),
-        message: "Welcome to First Jax",
+        message: "Welcome to  Jax",
         isActive: false,
         backgroundColor: "#3B82F6",
         textColor: "#FFFFFF",
