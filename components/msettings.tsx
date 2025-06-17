@@ -26,7 +26,7 @@ interface SaveStatus {
 
 export default function BannerSettingsForm({ initialData }: BannerSettingsFormProps) {
   const [formData, setFormData] = useState<FormData>({
-    message: initialData?.message || "Welcome to First Impressions Resume Writing!",
+    message: initialData?.message || "Welcome to Jax",
     isActive: initialData?.isActive || false,
     backgroundColor: initialData?.backgroundColor || "#3B82F6",
     textColor: initialData?.textColor || "#FFFFFF",
