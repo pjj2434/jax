@@ -161,7 +161,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
       <div className="bg-black text-white min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <p className="text-lg">Loading events...</p>
+          <p className="text-lg">Loading...</p>
         </div>
       </div>
     );
@@ -207,7 +207,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.8 }}
             >
-              JAX  Bar
+              JAX
             </motion.h1>
             <motion.p 
               className="text-xl md:text-2xl mb-8 text-white/90"
