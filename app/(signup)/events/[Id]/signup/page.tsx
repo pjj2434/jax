@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft } from "lucide-react";
 import { use } from "react"; // Import React.use
 
 interface Event {
@@ -109,107 +110,155 @@ export default function SignupPage({ params }: { params: Promise<{ Id: string }>
     }
   };
 
+  const handleBackToHome = () => {
+    router.push("/");
+  };
+
   if (loading) return (
-    <div className="container mx-auto p-4 text-center">
-      <div className="animate-pulse">Loading event details...</div>
+    <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white text-center">
+        <div className="animate-pulse">Loading event details...</div>
+      </div>
     </div>
   );
   
   if (error) return (
-    <div className="container mx-auto p-4">
-      <div className="bg-red-100 border border-red-400 text-red-700 p-4 rounded">
-        <h2 className="font-bold mb-2">Error</h2>
-        <p>{error}</p>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="p-6">
+            <h2 className="font-bold mb-2 text-red-400">Error</h2>
+            <p className="text-gray-300 mb-4">{error}</p>
+            <Button 
+              onClick={handleBackToHome}
+              variant="outline"
+              className="w-full bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
   
   if (!event) return (
-    <div className="container mx-auto p-4">
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 p-4 rounded">
-        <h2 className="font-bold mb-2">Event Not Found</h2>
-        <p>The event you're looking for could not be found.</p>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="p-6">
+            <h2 className="font-bold mb-2 text-yellow-400">Event Not Found</h2>
+            <p className="text-gray-300 mb-4">The event you're looking for could not be found.</p>
+            <Button 
+              onClick={handleBackToHome}
+              variant="outline"
+              className="w-full bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 
   return (
-    <div className="container mx-auto p-4 max-w-md">
-      <Card>
-        <CardHeader>
-          <CardTitle>Sign Up for {event.title}</CardTitle>
-          {event.eventDate && (
-            <CardDescription>
-              {new Date(event.eventDate).toLocaleDateString()}
-              {event.location && ` • ${event.location}`}
-            </CardDescription>
-          )}
-          {!event.eventDate && event.location && (
-            <CardDescription>
-              Location: {event.location}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        {/* Back Button */}
+        <div className="mb-4">
+          <Button 
+            onClick={handleBackToHome}
+            variant="ghost"
+            className="text-white hover:bg-gray-800 p-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Button>
+        </div>
+
+        <Card className="bg-gray-800 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-white">Sign Up for {event.title}</CardTitle>
+            {event.eventDate && (
+              <CardDescription className="text-gray-400">
+                {new Date(event.eventDate).toLocaleDateString()}
+                {event.location && ` • ${event.location}`}
+              </CardDescription>
+            )}
+            {!event.eventDate && event.location && (
+              <CardDescription className="text-gray-400">
+                Location: {event.location}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-gray-300">Name *</Label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-gray-300">Email *</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-300">Phone *</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-gray-300">Notes (Optional)</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={3}
+                  className="bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500"
+                />
+              </div>
+            </CardContent>
             
-            <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-              />
-            </div>
-          </CardContent>
-          
-          <CardFooter>
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={submitting}
-            >
-              {submitting ? "Submitting..." : "Sign Up"}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+            <CardFooter>
+              <Button 
+                type="submit" 
+                className="w-full bg-black hover:bg-gray-900 text-white"
+                disabled={submitting}
+              >
+                {submitting ? "Submitting..." : "Sign Up"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

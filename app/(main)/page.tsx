@@ -51,12 +51,7 @@ export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [contactForm, setContactForm] = useState({
-    name: "",
-    email: "",
-    message: ""
-  });
-
+ 
   // Refs for scrolling
   const eventsRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
@@ -114,19 +109,52 @@ export default function HomePage() {
   };
 
   // Handle contact form changes
-  const handleContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setContactForm(prev => ({ ...prev, [name]: value }));
-  };
+ const [contactForm, setContactForm] = useState({
+  name: "",
+  email: "",
+  message: ""
+});
 
-  // Handle contact form submission
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here you would typically send the form data to your API
-    console.log("Contact form submitted:", contactForm);
-    toast.success("Message sent! We'll get back to you soon.");
-    setContactForm({ name: "", email: "", message: "" });
-  };
+const [submitting, setSubmitting] = useState(false);
+
+const handleContactChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const { name, value } = e.target;
+  setContactForm(prev => ({ ...prev, [name]: value }));
+};
+
+const handleContactSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmitting(true);
+  
+  try {
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(contactForm),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Failed to send message");
+    }
+
+    toast.success("Message sent successfully! We'll get back to you soon.");
+    
+    // Reset form
+    setContactForm({
+      name: "",
+      email: "",
+      message: ""
+    });
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : "Failed to send message");
+    console.error("Contact form error:", err);
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (loading) {
     return (
@@ -678,50 +706,57 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <form onSubmit={handleContactSubmit} className="bg-gray-900 p-6 rounded-lg border border-gray-800">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name" className="text-white">Name</Label>
-                    <Input 
-                      id="name" 
-                      name="name" 
-                      value={contactForm.name} 
-                      onChange={handleContactChange} 
-                      required 
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="email" className="text-white">Email</Label>
-                    <Input 
-                      id="email" 
-                      name="email" 
-                      type="email" 
-                      value={contactForm.email} 
-                      onChange={handleContactChange} 
-                      required 
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="message" className="text-white">Message</Label>
-                    <Textarea 
-                      id="message" 
-                      name="message" 
-                      value={contactForm.message} 
-                      onChange={handleContactChange} 
-                      required 
-                      rows={5}
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-                  
-                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                    Send Message
-                  </Button>
-                </div>
-              </form>
+  <div className="space-y-4">
+    <div>
+      <Label htmlFor="name" className="text-white">Name</Label>
+      <Input 
+        id="name" 
+        name="name" 
+        value={contactForm.name} 
+        onChange={handleContactChange} 
+        required 
+        className="bg-gray-800 border-gray-700 text-white"
+        disabled={submitting}
+      />
+    </div>
+    
+    <div>
+      <Label htmlFor="email" className="text-white">Email</Label>
+      <Input 
+        id="email" 
+        name="email" 
+        type="email" 
+        value={contactForm.email} 
+        onChange={handleContactChange} 
+        required 
+        className="bg-gray-800 border-gray-700 text-white"
+        disabled={submitting}
+      />
+    </div>
+    
+    <div>
+      <Label htmlFor="message" className="text-white">Message</Label>
+      <Textarea 
+        id="message" 
+        name="message" 
+        value={contactForm.message} 
+        onChange={handleContactChange} 
+        required 
+        rows={5}
+        className="bg-gray-800 border-gray-700 text-white"
+        disabled={submitting}
+      />
+    </div>
+    
+    <Button 
+      type="submit" 
+      className="w-full bg-primary hover:bg-primary/90"
+      disabled={submitting}
+    >
+      {submitting ? "Sending..." : "Send Message"}
+    </Button>
+  </div>
+</form>
             </motion.div>
           </div>
         </div>
