@@ -1,4 +1,3 @@
-// app/admin/events/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,6 +15,24 @@ import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
 
+// Custom hook for media queries
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false);
+  
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    
+    const listener = () => setMatches(media.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [matches, query]);
+  
+  return matches;
+}
+
 interface Section {
   id: string;
   title: string;
@@ -29,9 +46,9 @@ interface Event {
   location: string | null;
   maxAttendees: number | null;
   isActive: boolean;
-  showCapacity: boolean; // Added showCapacity field
+  showCapacity: boolean;
   sectionId: string | null;
-  attendeeCount?: number; // Optional attendee count
+  attendeeCount?: number;
 }
 
 export default function EventsPage() {
@@ -48,9 +65,12 @@ export default function EventsPage() {
     location: "",
     maxAttendees: "",
     isActive: true,
-    showCapacity: true, // Added showCapacity field
+    showCapacity: true,
     sectionId: "none",
   });
+  
+  // Media query for responsive design
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const fetchData = async () => {
     try {
@@ -157,8 +177,8 @@ export default function EventsPage() {
       location: event.location || "",
       maxAttendees: event.maxAttendees?.toString() || "",
       isActive: event.isActive,
-      showCapacity: event.showCapacity !== undefined ? event.showCapacity : true, // Handle showCapacity
-      sectionId: event.sectionId || "none", // Use "none" if sectionId is null or empty
+      showCapacity: event.showCapacity !== undefined ? event.showCapacity : true,
+      sectionId: event.sectionId || "none",
     });
     setIsCreating(true);
   };
@@ -191,7 +211,7 @@ export default function EventsPage() {
       location: "",
       maxAttendees: "",
       isActive: true,
-      showCapacity: true, // Reset to default true
+      showCapacity: true,
       sectionId: "none",
     });
     setEditingEvent(null);
@@ -203,9 +223,8 @@ export default function EventsPage() {
   }
 
   return (
-
     <div className="container mx-auto p-4">
-     <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4">
+      <header className="flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb>
@@ -217,218 +236,241 @@ export default function EventsPage() {
         </Breadcrumb>
       </header>
       <SidebarInset>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Manage Events</h1>
+          <Button onClick={() => setIsCreating(!isCreating)}>
+            {isCreating ? "Cancel" : "Add Event"}
+          </Button>
+        </div>
 
-      
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Manage Events</h1>
-        <Button onClick={() => setIsCreating(!isCreating)}>
-          {isCreating ? "Cancel" : "Add Event"}
-        </Button>
-      </div>
-
-      {isCreating && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>{editingEvent ? "Edit Event" : "Create New Event"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="eventDate">Event Date</Label>
-                <Input
-                  id="eventDate"
-                  name="eventDate"
-                  type="date"
-                  value={formData.eventDate}
-                  onChange={handleChange}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="sectionId">Section</Label>
-                <Select
-                  value={formData.sectionId}
-                  onValueChange={handleSelectChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Section</SelectItem>
-                    {sections.map((section) => (
-                      <SelectItem key={section.id} value={section.id}>
-                        {section.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* Event Status Toggle */}
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="isActive"
-                  checked={formData.isActive}
-                  onCheckedChange={handleSwitchChange("isActive")}
-                />
-                <Label htmlFor="isActive">Active</Label>
-              </div>
-              
-              {/* Capacity Settings */}
-              <div className="border p-4 rounded-md space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="showCapacity"
-                    checked={formData.showCapacity}
-                    onCheckedChange={handleSwitchChange("showCapacity")}
+        {isCreating && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>{editingEvent ? "Edit Event" : "Create New Event"}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    required
                   />
-                  <Label htmlFor="showCapacity">Show & Enforce Capacity Limits</Label>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="maxAttendees" className={!formData.showCapacity ? "text-gray-400" : ""}>
-                    Maximum Attendees
-                  </Label>
-                  <Input
-                    id="maxAttendees"
-                    name="maxAttendees"
-                    type="number"
-                    value={formData.maxAttendees}
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={formData.description}
                     onChange={handleChange}
-                    disabled={!formData.showCapacity}
-                    className={!formData.showCapacity ? "bg-gray-100" : ""}
+                    rows={3}
                   />
-                  {formData.showCapacity && (
-                    <p className="text-xs text-gray-500">
-                      Set to 0 or leave empty for unlimited capacity
-                    </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="eventDate">Event Date</Label>
+                  <Input
+                    id="eventDate"
+                    name="eventDate"
+                    type="date"
+                    value={formData.eventDate}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleChange}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="sectionId">Section</Label>
+                  <Select
+                    value={formData.sectionId}
+                    onValueChange={handleSelectChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Section</SelectItem>
+                      {sections.map((section) => (
+                        <SelectItem key={section.id} value={section.id}>
+                          {section.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Event Status Toggle */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={handleSwitchChange("isActive")}
+                  />
+                  <Label htmlFor="isActive">Active</Label>
+                </div>
+                
+                {/* Capacity Settings */}
+                <div className="border p-4 rounded-md space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="showCapacity"
+                      checked={formData.showCapacity}
+                      onCheckedChange={handleSwitchChange("showCapacity")}
+                    />
+                    <Label htmlFor="showCapacity">Show & Enforce Capacity Limits</Label>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAttendees" className={!formData.showCapacity ? "text-gray-400" : ""}>
+                      Maximum Attendees
+                    </Label>
+                    <Input
+                      id="maxAttendees"
+                      name="maxAttendees"
+                      type="number"
+                      value={formData.maxAttendees}
+                      onChange={handleChange}
+                      disabled={!formData.showCapacity}
+                      className={!formData.showCapacity ? "bg-gray-100" : ""}
+                    />
+                    {formData.showCapacity && (
+                      <p className="text-xs text-gray-500">
+                        Set to 0 or leave empty for unlimited capacity
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <Button type="submit">
+                    {editingEvent ? "Update Event" : "Create Event"}
+                  </Button>
+                  {editingEvent && (
+                    <Button type="button" variant="outline" onClick={resetForm}>
+                      Cancel
+                    </Button>
                   )}
                 </div>
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <Button type="submit">
-                  {editingEvent ? "Update Event" : "Create Event"}
-                </Button>
-                {editingEvent && (
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
-      {error && <div className="text-red-500 mb-4">{error}</div>}
+        {error && <div className="text-red-500 mb-4">{error}</div>}
 
-      {events.length > 0 ? (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Section</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {events.map((event) => (
-              <TableRow key={event.id}>
-                <TableCell className="font-medium">{event.title}</TableCell>
-                <TableCell>
-                  {event.eventDate 
-                    ? new Date(event.eventDate).toLocaleDateString() 
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  {event.sectionId 
-                    ? sections.find(s => s.id === event.sectionId)?.title || "-" 
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    event.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                  }`}>
-                    {event.isActive ? "Active" : "Inactive"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {event.showCapacity ? (
-                    event.maxAttendees ? (
-                      <span className="text-sm">
-                        {event.attendeeCount !== undefined ? `${event.attendeeCount}/` : ""}
-                        {event.maxAttendees}
-                      </span>
-                    ) : (
-                      <span className="text-sm">Unlimited</span>
-                    )
-                  ) : (
-                    <span className="text-sm text-gray-500">Disabled</span>
+        {events.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  {!isMobile && (
+                    <>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Section</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Capacity</TableHead>
+                    </>
                   )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEdit(event)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDelete(event.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
-        <div className="text-center py-8">
-          <p className="text-gray-500">No events found. Create your first event to get started.</p>
-        </div>
-      )}
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {events.map((event) => (
+                  <TableRow key={event.id}>
+                    <TableCell className="font-medium">
+                      {event.title}
+                      {isMobile && event.eventDate && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(event.eventDate).toLocaleDateString()}
+                        </div>
+                      )}
+                      {isMobile && (
+                        <div className="text-xs text-gray-500">
+                          {event.isActive ? "Active" : "Inactive"}
+                          {event.sectionId && sections.find(s => s.id === event.sectionId) && 
+                            ` • ${sections.find(s => s.id === event.sectionId)?.title}`
+                          }
+                        </div>
+                      )}
+                    </TableCell>
+                    {!isMobile && (
+                      <>
+                        <TableCell>
+                          {event.eventDate 
+                            ? new Date(event.eventDate).toLocaleDateString() 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {event.sectionId 
+                            ? sections.find(s => s.id === event.sectionId)?.title || "-" 
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            event.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {event.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {event.showCapacity ? (
+                            event.maxAttendees ? (
+                              <span className="text-sm">
+                                {event.attendeeCount !== undefined ? `${event.attendeeCount}/` : ""}
+                                {event.maxAttendees}
+                              </span>
+                            ) : (
+                              <span className="text-sm">Unlimited</span>
+                            )
+                          ) : (
+                            <span className="text-sm text-gray-500">Disabled</span>
+                          )}
+                        </TableCell>
+                      </>
+                    )}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEdit(event)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDelete(event.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No events found. Create your first event to get started.</p>
+          </div>
+        )}
       </SidebarInset>
     </div>
   );
