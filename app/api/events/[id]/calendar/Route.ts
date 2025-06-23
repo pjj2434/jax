@@ -45,7 +45,7 @@ export async function GET(
       summary: eventDetails.title,
       description: eventDetails.description || '',
       location: eventDetails.location || 'JAX Darts Bar',
-      url: `${process.env.NEXT_PUBLIC_BASE_URL}/events/${id}`,
+      url: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://jax-green.vercel.app'}/events/${id}`,
     });
     
     // Generate iCal file
