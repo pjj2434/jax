@@ -65,7 +65,7 @@ export const section = sqliteTable("section", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
   createdById: text("created_by_id").references(() => user.id),
 });
-// db/schema.ts (or wherever your schema is defined)
+// db/schema.ts - Updated event schema
 export const event = sqliteTable("event", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
@@ -74,26 +74,47 @@ export const event = sqliteTable("event", {
   location: text("location"),
   maxAttendees: integer("max_attendees"),
   isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
+  showCapacity: integer("show_capacity", { mode: "boolean" }).default(true),
   sectionId: text("section_id").references(() => section.id, { onDelete: "set null" }),
-  showCapacity: integer("show_capacity", { mode: "boolean" }).default(true), // New field
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-  createdById: text("created_by_id").references(() => user.id),
+  createdById: text("created_by_id"),
+  
+  // New fields
+  eventType: text("event_type").notNull().default("event"), // "event" or "league"
+  allowSignups: integer("allow_signups", { mode: "boolean" }).default(true),
+  participantsPerSignup: integer("participants_per_signup").default(1),
+  featuredImage: text("featured_image"),
+  galleryImages: text("gallery_images"), // JSON string of image URLs
+  detailedContent: text("detailed_content"), // Rich text content
 });
 
+// New schema for quick links
+export const quickLink = sqliteTable("quick_link", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id").notNull().references(() => event.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  order: integer("order").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
 
-// Signups table for event registrations
+// Updated signup schema to handle multiple participants
 export const signup = sqliteTable("signup", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   eventId: text("event_id").notNull().references(() => event.id, { onDelete: "cascade" }),
-  status: text("status").default("registered").notNull(), // registered, attended, cancelled, etc.
   notes: text("notes"),
+  status: text("status").notNull().default("registered"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  
+  // New fields for additional participants
+  additionalParticipants: text("additional_participants"), // JSON string of participants
 });
+
 
 // Export types for TypeScript
 export type Section = typeof section.$inferSelect;

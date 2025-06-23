@@ -14,6 +14,8 @@ import { Pencil, Trash2, Plus } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import EventForm from "../__components/form";
+
 
 // Custom hook for media queries
 function useMediaQuery(query: string): boolean {
@@ -249,123 +251,38 @@ export default function EventsPage() {
               <CardTitle>{editingEvent ? "Edit Event" : "Create New Event"}</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="eventDate">Event Date</Label>
-                  <Input
-                    id="eventDate"
-                    name="eventDate"
-                    type="date"
-                    value={formData.eventDate}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="sectionId">Section</Label>
-                  <Select
-                    value={formData.sectionId}
-                    onValueChange={handleSelectChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Section</SelectItem>
-                      {sections.map((section) => (
-                        <SelectItem key={section.id} value={section.id}>
-                          {section.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Event Status Toggle */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={handleSwitchChange("isActive")}
-                  />
-                  <Label htmlFor="isActive">Active</Label>
-                </div>
-                
-                {/* Capacity Settings */}
-                <div className="border p-4 rounded-md space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="showCapacity"
-                      checked={formData.showCapacity}
-                      onCheckedChange={handleSwitchChange("showCapacity")}
-                    />
-                    <Label htmlFor="showCapacity">Show & Enforce Capacity Limits</Label>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="maxAttendees" className={!formData.showCapacity ? "text-gray-400" : ""}>
-                      Maximum Attendees
-                    </Label>
-                    <Input
-                      id="maxAttendees"
-                      name="maxAttendees"
-                      type="number"
-                      value={formData.maxAttendees}
-                      onChange={handleChange}
-                      disabled={!formData.showCapacity}
-                      className={!formData.showCapacity ? "bg-gray-100" : ""}
-                    />
-                    {formData.showCapacity && (
-                      <p className="text-xs text-gray-500">
-                        Set to 0 or leave empty for unlimited capacity
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                  <Button type="submit">
-                    {editingEvent ? "Update Event" : "Create Event"}
-                  </Button>
-                  {editingEvent && (
-                    <Button type="button" variant="outline" onClick={resetForm}>
-                      Cancel
-                    </Button>
-                  )}
-                </div>
-              </form>
+              <EventForm
+                initialData={editingEvent}
+                onSubmit={async (data) => {
+                  try {
+                    if (editingEvent) {
+                      // Update event
+                      const res = await fetch("/api/events", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: editingEvent.id, ...data }),
+                      });
+                      if (!res.ok) throw new Error((await res.json()).error || "Failed to update event");
+                      toast.success("Event updated successfully");
+                    } else {
+                      // Create event
+                      const res = await fetch("/api/events", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(data),
+                      });
+                      if (!res.ok) throw new Error((await res.json()).error || "Failed to create event");
+                      toast.success("Event created successfully");
+                    }
+                    resetForm();
+                    fetchData();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "An error occurred");
+                  }
+                }}
+                onCancel={resetForm}
+                sections={sections}
+              />
             </CardContent>
           </Card>
         )}

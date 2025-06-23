@@ -43,11 +43,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Create a new signup (public access)
+// app/api/signups/route.ts - Updated POST method
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, eventId, notes } = body;
+    const { name, email, phone, eventId, notes, additionalParticipants } = body;
 
     // Validate required fields
     if (!name || !email || !phone || !eventId) {
@@ -67,6 +67,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Event is not active" }, { status: 400 });
     }
     
+    // Check if event allows signups
+    if (!eventData[0].allowSignups) {
+      return NextResponse.json({ error: "This event is not accepting signups" }, { status: 400 });
+    }
+    
     // Check capacity only if showCapacity is true and maxAttendees is set
     if (eventData[0].showCapacity && eventData[0].maxAttendees) {
       const attendeeCount = await db
@@ -74,7 +79,24 @@ export async function POST(request: NextRequest) {
         .from(signup)
         .where(eq(signup.eventId, eventId));
       
-      if (attendeeCount[0].count >= eventData[0].maxAttendees) {
+      // Calculate total participants including additional ones
+      let additionalCount = 0;
+      if (additionalParticipants) {
+        try {
+          const parsedParticipants = typeof additionalParticipants === 'string' 
+            ? JSON.parse(additionalParticipants) 
+            : additionalParticipants;
+            
+          // Count only participants with at least a name
+          additionalCount = parsedParticipants.filter((p: any) => p.name?.trim()).length;
+        } catch (e) {
+          console.error("Error parsing additional participants:", e);
+        }
+      }
+      
+      const totalParticipants = attendeeCount[0].count + 1 + additionalCount;
+      
+      if (totalParticipants > eventData[0].maxAttendees) {
         return NextResponse.json({ error: "Event is full" }, { status: 400 });
       }
     }
@@ -90,7 +112,11 @@ export async function POST(request: NextRequest) {
       status: "registered",
       createdAt: new Date(),
       updatedAt: new Date(),
+      additionalParticipants: additionalParticipants || null,
     }).returning();
+
+    // Send confirmation email
+    // ... (email sending code from previous response)
 
     return NextResponse.json(newSignup[0], { status: 201 });
   } catch (error) {
@@ -98,6 +124,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create signup" }, { status: 500 });
   }
 }
+
 
 // PUT - Update a signup status (admin only)
 export async function PUT(request: NextRequest) {
