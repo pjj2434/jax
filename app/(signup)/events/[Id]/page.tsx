@@ -68,12 +68,31 @@ interface Participant {
   email: string;
 }
 
-export default function EventDetailPage({ params }: { params: Promise<{ Id: string }> }) {
-  const { Id } = React.use(params);
+export const revalidate = 60;
+
+export default async function EventDetailPage({ params }: { params: Promise<{ Id: string }> }) {
+  const { Id } = await params;
   const router = useRouter();
   
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "";
+  const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`, { next: { revalidate: 60 } });
+  if (!eventRes.ok) {
+    // You may want to render a 404 or error page here
+    return <div>Event not found</div>;
+  }
+  const eventData = await eventRes.json();
+  // Parse gallery images if needed
+  if (eventData.galleryImages && typeof eventData.galleryImages === "string") {
+    try {
+      eventData.galleryImages = JSON.parse(eventData.galleryImages);
+    } catch {
+      eventData.galleryImages = [];
+    }
+  }
+  const linksRes = await fetch(`${baseUrl}/api/events/${Id}/links`, { next: { revalidate: 60 } });
+  const quickLinks = linksRes.ok ? await linksRes.json() : [];
+
   const [event, setEvent] = useState<Event | null>(null);
-  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("details");
@@ -94,57 +113,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ Id: stri
   // Move fetchEventData outside useEffect
   const fetchEventData = async () => {
     try {
-      // Fetch event details
-      const eventRes = await fetch(`/api/events?id=${Id}`, {
-        cache: 'no-store'
-      });
-      
-      if (!eventRes.ok) {
-        if (eventRes.status === 404) {
-          throw new Error("Event not found");
-        }
-        throw new Error(`Failed to fetch event: ${eventRes.status}`);
-      }
-      
-      const eventData = await eventRes.json();
-      
-      // Parse gallery images if they exist
-      if (eventData.galleryImages) {
-        if (Array.isArray(eventData.galleryImages)) {
-          // Already an array, use as is
-        } else if (
-          typeof eventData.galleryImages === "string" &&
-          eventData.galleryImages.trim().startsWith("[") &&
-          eventData.galleryImages.trim().endsWith("]")
-        ) {
-          try {
-            const parsedImages = JSON.parse(eventData.galleryImages);
-            eventData.galleryImages = Array.isArray(parsedImages) ? parsedImages : [];
-          } catch (e) {
-            console.error("Error parsing gallery images:", e);
-            eventData.galleryImages = [];
-          }
-        } else {
-          // Not a valid JSON array string, treat as empty
-          eventData.galleryImages = [];
-        }
-      } else {
-        eventData.galleryImages = [];
-      }
-      
       setEvent(eventData);
-      
-      // Fetch quick links
-      try {
-        const linksRes = await fetch(`/api/events/${Id}/links`);
-        if (linksRes.ok) {
-          const linksData = await linksRes.json();
-          setQuickLinks(linksData);
-        }
-      } catch (linkErr) {
-        console.error("Error fetching quick links:", linkErr);
-        // Don't fail the whole page if quick links fail
-      }
       
       // Update additional participants array based on event settings
       if (eventData.allowSignups && eventData.participantsPerSignup > 1) {
