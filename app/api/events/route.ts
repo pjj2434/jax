@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, count } from "drizzle-orm";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
-import { revalidatePath } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { deleteUploadThingFiles } from "@/lib/uploadthing";
 
 // GET - Fetch events (public access)
@@ -15,75 +15,64 @@ export async function GET(request: NextRequest) {
     const id = url.searchParams.get("id");
     const sectionId = url.searchParams.get("sectionId");
     
-    // If an ID is provided, return a single event with attendee count
+    // Use unstable_cache for event fetches
+    const getEvent = unstable_cache(
+      async (id: string) => {
+        const eventData = await db.select().from(event).where(eq(event.id, id));
+        if (eventData.length === 0) return null;
+        const attendeeCount = await db
+          .select({ count: count() })
+          .from(signup)
+          .where(eq(signup.eventId, id));
+        return {
+          ...eventData[0],
+          attendeeCount: attendeeCount[0]?.count || 0
+        };
+      },
+      ['event-fetch'],
+      { tags: (id: string) => [`event-${id}`] }
+    );
+
+    const getEvents = unstable_cache(
+      async (sectionId?: string) => {
+        let events;
+        if (sectionId) {
+          events = await db.select().from(event).where(eq(event.sectionId, sectionId));
+        } else {
+          events = await db.select().from(event);
+        }
+        const attendeeCounts = await db
+          .select({ eventId: signup.eventId, count: count() })
+          .from(signup)
+          .groupBy(signup.eventId);
+        const attendeeCountMap = new Map();
+        attendeeCounts.forEach(item => {
+          attendeeCountMap.set(item.eventId, item.count);
+        });
+        const eventsWithCounts = events.map(event => ({
+          ...event,
+          attendeeCount: attendeeCountMap.get(event.id) || 0
+        }));
+        eventsWithCounts.sort((a, b) => {
+          if (!a.eventDate) return 1;
+          if (!b.eventDate) return -1;
+          return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+        });
+        return eventsWithCounts;
+      },
+      ['events-fetch'],
+      { tags: ['events'] }
+    );
+
     if (id) {
-      // Get the event
-      const eventData = await db.select().from(event).where(eq(event.id, id));
-      
-      if (eventData.length === 0) {
+      const result = await getEvent(id);
+      if (!result) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 });
       }
-      
-      // Get the attendee count for this event
-      const attendeeCount = await db
-        .select({ count: count() })
-        .from(signup)
-        .where(eq(signup.eventId, id));
-      
-      // Return the event with attendee count
-      return NextResponse.json({
-        ...eventData[0],
-        attendeeCount: attendeeCount[0]?.count || 0
-      }, {
-        headers: {
-          'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
-        }
-      });
+      return NextResponse.json(result);
     }
-    
-    // Otherwise, return all events with attendee counts
-    let events;
-    
-    // Filter by section if provided
-    if (sectionId) {
-      events = await db.select().from(event).where(eq(event.sectionId, sectionId));
-    } else {
-      events = await db.select().from(event);
-    }
-    
-    // Get attendee counts for all events
-    const attendeeCounts = await db
-      .select({
-        eventId: signup.eventId,
-        count: count()
-      })
-      .from(signup)
-      .groupBy(signup.eventId);
-    
-    // Create a map of event IDs to attendee counts
-    const attendeeCountMap = new Map();
-    attendeeCounts.forEach(item => {
-      attendeeCountMap.set(item.eventId, item.count);
-    });
-    
-    // Add attendee count to each event
-    const eventsWithCounts = events.map(event => ({
-      ...event,
-      attendeeCount: attendeeCountMap.get(event.id) || 0
-    }));
-    
-    // Sort the results in memory
-    eventsWithCounts.sort((a, b) => {
-      if (!a.eventDate) return 1;
-      if (!b.eventDate) return -1;
-      return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
-    });
-    
-    return NextResponse.json(eventsWithCounts, {
-      headers: {
-        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
-      }
-    });
+    const result = await getEvents(sectionId || undefined);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching events:", error);
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
@@ -150,9 +139,8 @@ export async function POST(request: NextRequest) {
       createdById: userId,
     }).returning();
 
-    revalidatePath('/');
-    revalidatePath('/admin/events');
-    revalidatePath('/admin/signups');
+    revalidateTag('events');
+    revalidateTag(`event-${newEvent[0].id}`);
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
@@ -223,11 +211,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    revalidatePath('/');
-    revalidatePath('/admin/events');
-    revalidatePath('/admin/signups');
-    revalidatePath(`/events/${id}`);
-    revalidatePath(`/signup/events/${id}`);
+    revalidateTag('events');
+    revalidateTag(`event-${id}`);
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {
@@ -298,9 +283,7 @@ export async function DELETE(request: NextRequest) {
       });
     }
 
-    revalidatePath('/');
-    revalidatePath('/admin/events');
-    revalidatePath('/admin/signups');
+    revalidateTag('events');
 
     return NextResponse.json({ 
       success: true, 
