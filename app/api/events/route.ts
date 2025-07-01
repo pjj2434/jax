@@ -227,6 +227,7 @@ export async function PUT(request: NextRequest) {
     revalidatePath('/admin/events');
     revalidatePath('/admin/signups');
     revalidatePath(`/events/${id}`);
+    revalidatePath(`/signup/events/${id}`);
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {
