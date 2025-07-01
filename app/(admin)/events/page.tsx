@@ -7,37 +7,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Mail } from "lucide-react";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import EventForm from "../__components/form";
 
-
 // Custom hook for media queries
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
-  
+
   useEffect(() => {
     const media = window.matchMedia(query);
     if (media.matches !== matches) {
       setMatches(media.matches);
     }
-    
+
     const listener = () => setMatches(media.matches);
     media.addEventListener("change", listener);
     return () => media.removeEventListener("change", listener);
   }, [matches, query]);
-  
+
   return matches;
 }
 
 interface Section {
   id: string;
   title: string;
+}
+
+interface QuickLink {
+  id: string;
+  title: string;
+  url: string;
+  order: number;
 }
 
 interface Event {
@@ -51,6 +58,7 @@ interface Event {
   showCapacity: boolean;
   sectionId: string | null;
   attendeeCount?: number;
+  quickLinks?: QuickLink[];
 }
 
 export default function EventsPage() {
@@ -60,6 +68,13 @@ export default function EventsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [selectedEventForEmail, setSelectedEventForEmail] = useState<Event | null>(null);
+  const [emailData, setEmailData] = useState({
+    subject: "",
+    message: "",
+  });
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -88,7 +103,29 @@ export default function EventsPage() {
       const eventsRes = await fetch("/api/events");
       if (!eventsRes.ok) throw new Error("Failed to fetch events");
       const eventsData = await eventsRes.json();
-      setEvents(eventsData);
+      
+      // Fetch quick links for each event
+      const eventsWithLinks = await Promise.all(
+        eventsData.map(async (event: Event) => {
+          try {
+            const linksRes = await fetch(`/api/events/${event.id}/links`, {
+              cache: 'no-store',
+              headers: {
+                'Cache-Control': 'no-cache'
+              }
+            });
+            if (linksRes.ok) {
+              const linksData = await linksRes.json();
+              return { ...event, quickLinks: linksData };
+            }
+          } catch (error) {
+            console.error(`Error fetching quick links for event ${event.id}:`, error);
+          }
+          return { ...event, quickLinks: [] };
+        })
+      );
+      
+      setEvents(eventsWithLinks);
     } catch (err) {
       setError("Error loading data");
       toast.error("Failed to load data");
@@ -205,6 +242,44 @@ export default function EventsPage() {
     }
   };
 
+  const handleEmailParticipants = (event: Event) => {
+    setSelectedEventForEmail(event);
+    setEmailData({ subject: "", message: "" });
+    setEmailModalOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedEventForEmail || !emailData.subject || !emailData.message) {
+      toast.error("Please fill in both subject and message");
+      return;
+    }
+
+    setSendingEmail(true);
+    
+    try {
+      const res = await fetch(`/api/events/${selectedEventForEmail.id}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(emailData),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send email");
+      }
+
+      const result = await res.json();
+      toast.success(result.message);
+      setEmailModalOpen(false);
+      setSelectedEventForEmail(null);
+      setEmailData({ subject: "", message: "" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -301,6 +376,7 @@ export default function EventsPage() {
                       <TableHead>Section</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Capacity</TableHead>
+                      <TableHead>Quick Links</TableHead>
                     </>
                   )}
                   <TableHead className="text-right">Actions</TableHead>
@@ -358,10 +434,35 @@ export default function EventsPage() {
                             <span className="text-sm text-gray-500">Disabled</span>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {event.quickLinks && event.quickLinks.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {event.quickLinks.map((link) => (
+                                <span
+                                  key={link.id}
+                                  className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded"
+                                  title={link.url}
+                                >
+                                  {link.title}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-500">None</span>
+                          )}
+                        </TableCell>
                       </>
                     )}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleEmailParticipants(event)}
+                          title="Email participants"
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="icon"
                           variant="ghost"
@@ -389,6 +490,59 @@ export default function EventsPage() {
           </div>
         )}
       </SidebarInset>
+
+      {/* Email Modal */}
+      <Dialog open={emailModalOpen} onOpenChange={setEmailModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Email Participants</DialogTitle>
+            <DialogDescription>
+              Send an email to all participants of "{selectedEventForEmail?.title}"
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="email-subject">Subject</Label>
+              <Input
+                id="email-subject"
+                value={emailData.subject}
+                onChange={(e) => setEmailData(prev => ({ ...prev, subject: e.target.value }))}
+                placeholder="Enter email subject..."
+                disabled={sendingEmail}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="email-message">Message</Label>
+              <Textarea
+                id="email-message"
+                value={emailData.message}
+                onChange={(e) => setEmailData(prev => ({ ...prev, message: e.target.value }))}
+                placeholder="Enter your message..."
+                rows={8}
+                disabled={sendingEmail}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setEmailModalOpen(false)}
+                disabled={sendingEmail}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailData.subject || !emailData.message}
+              >
+                {sendingEmail ? "Sending..." : "Send Email"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

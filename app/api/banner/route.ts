@@ -19,6 +19,10 @@ export async function GET() {
         backgroundColor: "#3B82F6",
         textColor: "#FFFFFF",
         showCloseButton: true,
+      }, {
+        headers: {
+          'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+        }
       });
     }
     
@@ -28,6 +32,10 @@ export async function GET() {
       backgroundColor: banners[0].backgroundColor,
       textColor: banners[0].textColor,
       showCloseButton: banners[0].showCloseButton,
+    }, {
+      headers: {
+        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+      }
     });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch banner data' }, { status: 500 });

@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { message: 'Email sent successfully' },
-      { status: 200 }
+      { status: 200, headers: { 'Cache-Control': 'no-store' } }
     )
   } catch (error) {
     console.error('Failed to send email:', error)

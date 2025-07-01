@@ -5,6 +5,9 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, count } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import { revalidatePath } from 'next/cache';
+import { sendSignupConfirmation } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 // GET - Fetch signups (admin only)
 export async function GET(request: NextRequest) {
@@ -36,7 +39,11 @@ export async function GET(request: NextRequest) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     
-    return NextResponse.json(signups);
+    return NextResponse.json(signups, {
+      headers: {
+        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+      }
+    });
   } catch (error) {
     console.error("Error fetching signups:", error);
     return NextResponse.json({ error: "Failed to fetch signups" }, { status: 500 });
@@ -46,6 +53,14 @@ export async function GET(request: NextRequest) {
 // app/api/signups/route.ts - Updated POST method
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting for signups
+    const clientIP = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
+    if (!rateLimit(`signup:${clientIP}`, 5, 300000)) { // 5 signups per 5 minutes per IP
+      return NextResponse.json({ 
+        error: "Too many signup attempts. Please try again later." 
+      }, { status: 429 });
+    }
+
     const body = await request.json();
     const { name, email, phone, eventId, notes, additionalParticipants } = body;
 
@@ -115,8 +130,47 @@ export async function POST(request: NextRequest) {
       additionalParticipants: additionalParticipants || null,
     }).returning();
 
-    // Send confirmation email
-    // ... (email sending code from previous response)
+    // Send confirmation emails
+    try {
+      // Send email to primary participant
+      await sendSignupConfirmation(
+        email,
+        name,
+        eventData[0].title,
+        eventData[0].eventDate,
+        eventData[0].location
+      );
+
+      // Send emails to additional participants
+      if (additionalParticipants) {
+        try {
+          const parsedParticipants = typeof additionalParticipants === 'string' 
+            ? JSON.parse(additionalParticipants) 
+            : additionalParticipants;
+            
+          for (const participant of parsedParticipants) {
+            if (participant.email && participant.name) {
+              await sendSignupConfirmation(
+                participant.email,
+                participant.name,
+                eventData[0].title,
+                eventData[0].eventDate,
+                eventData[0].location
+              );
+            }
+          }
+        } catch (e) {
+          console.error("Error sending emails to additional participants:", e);
+        }
+      }
+    } catch (emailError) {
+      console.error("Error sending confirmation emails:", emailError);
+      // Don't fail the signup if email fails
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin/signups');
+    revalidatePath('/admin/events');
 
     return NextResponse.json(newSignup[0], { status: 201 });
   } catch (error) {
@@ -159,6 +213,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Signup not found" }, { status: 404 });
     }
 
+    revalidatePath('/');
+    revalidatePath('/admin/signups');
+    revalidatePath('/admin/events');
+
     return NextResponse.json(updatedSignup[0]);
   } catch (error) {
     console.error("Error updating signup:", error);
@@ -187,6 +245,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     await db.delete(signup).where(eq(signup.id, id));
+
+    revalidatePath('/');
+    revalidatePath('/admin/signups');
+    revalidatePath('/admin/events');
+
     return NextResponse.json({ 
       success: true, 
       message: "Signup deleted successfully" 

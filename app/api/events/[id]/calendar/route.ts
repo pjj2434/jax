@@ -56,6 +56,7 @@ export async function GET(
       headers: {
         'Content-Type': 'text/calendar',
         'Content-Disposition': `attachment; filename="event-${id}.ics"`,
+        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
       },
     });
   } catch (error) {

@@ -157,17 +157,6 @@ const handleContactSubmit = async (e: React.FormEvent) => {
   }
 };
 
-  if (loading) {
-    return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
-          <p className="text-lg">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  
   if (error) {
     return (
       <div className="bg-black text-white min-h-screen p-4">
@@ -195,7 +184,9 @@ const handleContactSubmit = async (e: React.FormEvent) => {
             alt="Darts Bar background"
             fill
             priority
-            className="object-cover"
+            className="object-cover object-center"
+            sizes="100vw"
+            quality={90}
           />
         </div>
         
@@ -275,40 +266,46 @@ const handleContactSubmit = async (e: React.FormEvent) => {
             Upcoming Tournaments & Events
           </motion.h2>
 
-          {eventsBySection.map((section, sectionIndex) => (
-            <motion.div 
-              key={section.id} 
-              className="mb-16"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              variants={fadeIn}
-              transition={{ duration: 0.5, delay: sectionIndex * 0.1 }}
-            >
-              <h3 className="text-2xl font-semibold mb-4 border-l-4 border-primary pl-3">{section.title}</h3>
-              {section.description && (
-                <p className="text-gray-400 mb-6 ml-4">{section.description}</p>
-              )}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mb-4"></div>
+              <p className="text-lg">Loading events...</p>
+            </div>
+          ) : (
+            eventsBySection.map((section, sectionIndex) => (
+              <motion.div 
+                key={section.id} 
+                className="mb-16"
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-100px" }}
+                variants={fadeIn}
+                transition={{ duration: 0.5, delay: sectionIndex * 0.1 }}
+              >
+                <h3 className="text-2xl font-semibold mb-4 border-l-4 border-primary pl-3">{section.title}</h3>
+                {section.description && (
+                  <p className="text-gray-400 mb-6 ml-4">{section.description}</p>
+                )}
 
-              {section.events.length > 0 ? (
-                <motion.div 
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                  variants={staggerContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: "-50px" }}
-                >
-                  {section.events.map(event => {
-                    const eventIsFull = isEventFull(event);
-                    const remainingSpots = getRemainingSpots(event);
-                    
-                    return (
-                      <motion.div 
-                        key={event.id}
-                        variants={fadeIn}
-                        className={hasMinimalContent(event) ? "col-span-1" : "col-span-1 md:col-span-1 lg:col-span-1"}
-                      >
-                       <Card key={event.id} className="h-full flex flex-col hover:shadow-lg transition-shadow duration-300">
+                {section.events.length > 0 ? (
+                  <motion.div 
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-50px" }}
+                  >
+                    {section.events.map(event => {
+                      const eventIsFull = isEventFull(event);
+                      const remainingSpots = getRemainingSpots(event);
+                      
+                      return (
+                        <motion.div 
+                          key={event.id}
+                          variants={fadeIn}
+                          className={hasMinimalContent(event) ? "col-span-1" : "col-span-1 md:col-span-1 lg:col-span-1"}
+                        >
+                         <Card key={event.id} className="h-full flex flex-col hover:shadow-lg transition-shadow duration-300">
   <CardHeader className={hasMinimalContent(event) ? "pb-2" : ""}>
     <div className="flex justify-between items-start mb-2">
       <div className="inline-block px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
@@ -352,15 +349,16 @@ const handleContactSubmit = async (e: React.FormEvent) => {
     </Link>
   </CardFooter>
 </Card>
-                      </motion.div>
-                    );
-                  })}
-                </motion.div>
-              ) : (
-                <p className="text-gray-400 text-center">No events in this section.</p>
-              )}
-            </motion.div>
-          ))}
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                ) : (
+                  <p className="text-gray-400 text-center">No events in this section.</p>
+                )}
+              </motion.div>
+            ))
+          )}
 
           {/* Show events without a section */}
           {events.filter(event => !event.sectionId).length > 0 && (

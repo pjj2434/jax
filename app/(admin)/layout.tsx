@@ -23,19 +23,27 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // Mobile sidebar toggle state (client only)
+  // This will be a no-op on the server, but will work on the client
+  // You may want to move this to a client component if you want full interactivity
+  // For now, we just add responsive classes
+
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden flex-col sm:flex-row">
       <SidebarProvider>
-        <div className="flex-shrink-0">
+        {/* Sidebar: hidden on mobile, visible on sm+ */}
+        <div className="sm:flex-shrink-0 hidden sm:block">
           <AppSidebar />
         </div>
-        
-        <div className="flex-1 overflow-auto">
+        {/* Mobile sidebar trigger (optional) */}
+        <div className="sm:hidden flex items-center justify-between p-2 bg-background border-b">
+          {/* You can add a sidebar open button here if you want a drawer */}
+        </div>
+        <div className="flex-1 overflow-auto max-w-full">
           <SidebarInset>
             {children}
           </SidebarInset>
         </div>
-        
         <Toaster />
       </SidebarProvider>
     </div>

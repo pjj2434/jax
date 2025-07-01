@@ -13,7 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trash2, Plus } from "lucide-react";
 import { UploadButton } from "@/components/ui/uploadbutton";
+import { SimpleUpload } from "@/components/ui/simple-upload";
 import { Editor } from "@/components/ui/editor";
+import { GalleryViewer } from "@/components/ui/gallery-viewer";
+import { deleteUploadThingFileClient } from "@/lib/uploadthing";
 
 interface EventFormProps {
   initialData?: any;
@@ -54,6 +57,8 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
   
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  const [galleryViewerOpen, setGalleryViewerOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -80,20 +85,55 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
   };
 
   const handleFeaturedImageUpload = (url: string) => {
+    console.log("Setting featured image URL:", url);
     setFormData(prev => ({ ...prev, featuredImage: url }));
     toast.success("Featured image uploaded");
   };
 
+  const removeFeaturedImage = async () => {
+    const imageUrl = formData.featuredImage;
+    
+    // Remove from form state first
+    setFormData(prev => ({
+      ...prev,
+      featuredImage: ""
+    }));
+
+    // Delete from UploadThing if it's a new image (not from initial data)
+    if (imageUrl && imageUrl !== initialData?.featuredImage) {
+      try {
+        await deleteUploadThingFileClient(imageUrl);
+        console.log('Deleted featured image from UploadThing:', imageUrl);
+      } catch (error) {
+        console.error('Error deleting featured image from UploadThing:', error);
+      }
+    }
+  };
+
   const handleGalleryImageUpload = (url: string) => {
+    console.log("Adding gallery image URL:", url);
     setFormData(prev => ({ ...prev, galleryImages: [...prev.galleryImages, url] }));
     toast.success("Gallery image uploaded");
   };
 
-  const removeGalleryImage = (index: number) => {
+  const removeGalleryImage = async (index: number) => {
+    const imageUrl = formData.galleryImages[index];
+    
+    // Remove from form state first
     setFormData(prev => ({
       ...prev,
       galleryImages: prev.galleryImages.filter((_: any, i: number) => i !== index)
     }));
+
+    // Delete from UploadThing if it's a new image (not from initial data)
+    if (imageUrl && !initialData?.galleryImages?.includes(imageUrl)) {
+      try {
+        await deleteUploadThingFileClient(imageUrl);
+        console.log('Deleted gallery image from UploadThing:', imageUrl);
+      } catch (error) {
+        console.error('Error deleting gallery image from UploadThing:', error);
+      }
+    }
   };
 
   const addQuickLink = () => {
@@ -136,6 +176,27 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
       };
       
       await onSubmit(processedData);
+      
+      // If this is an update and we have quick links, save them separately
+      if (initialData?.id && formData.quickLinks.length > 0) {
+        try {
+          const quickLinksRes = await fetch(`/api/events/${initialData.id}/links`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              quickLinks: formData.quickLinks
+            }),
+          });
+          
+          if (!quickLinksRes.ok) {
+            console.error('Failed to save quick links');
+          }
+        } catch (error) {
+          console.error('Error saving quick links:', error);
+        }
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
       toast.error("Failed to save event");
@@ -147,7 +208,7 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 overflow-x-auto whitespace-nowrap px-1 sm:px-0">
           <TabsTrigger value="basic">Basic Info</TabsTrigger>
           <TabsTrigger value="details">Details & Content</TabsTrigger>
           <TabsTrigger value="images">Images</TabsTrigger>
@@ -265,33 +326,42 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
             <CardContent className="pt-6">
               <div className="space-y-4">
                 <Label>Featured Image</Label>
-                {formData.featuredImage ? (
-                  <div className="relative">
-                    <img 
-                      src={formData.featuredImage} 
-                      alt="Featured" 
-                      className="w-full h-48 object-cover rounded-md"
-                    />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={() => setFormData(prev => ({ ...prev, featuredImage: "" }))}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <UploadButton
-                    endpoint="eventImage"
-                    onClientUploadComplete={(res) => {
+                <SimpleUpload
+                  endpoint="eventImage"
+                  onClientUploadComplete={(res) => {
+                    console.log('Upload response:', res);
+                    if (res && res[0] && res[0].url) {
                       handleFeaturedImageUpload(res[0].url);
-                    }}
-                    onUploadError={(error: Error) => {
-                      toast.error(`Upload failed: ${error.message}`);
-                    }}
-                  />
+                    } else {
+                      toast.error('Upload completed but no URL received');
+                    }
+                  }}
+                  onUploadError={(error: Error) => {
+                    console.error('Upload error:', error);
+                    toast.error(`Upload failed: ${error.message}`);
+                  }}
+                />
+                
+                {formData.featuredImage && (
+                  <div className="mt-4">
+                    <Label className="text-sm text-gray-600 mb-2 block">Current Featured Image:</Label>
+                    <div className="relative">
+                      <img 
+                        src={formData.featuredImage} 
+                        alt="Featured" 
+                        className="w-full h-48 object-cover object-center rounded-md"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={removeFeaturedImage}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -300,39 +370,64 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <Label>Gallery Images</Label>
-                  <UploadButton
-                    endpoint="galleryImages"
-                    onClientUploadComplete={(res: { url: string }[]) => {
-                      res.forEach((file: { url: string }) => handleGalleryImageUpload(file.url));
-                    }}
-                    onUploadError={(error: Error) => {
-                      toast.error(`Upload failed: ${error.message}`);
-                    }}
-                  />
-                </div>
+                <Label>Gallery Images</Label>
+                <SimpleUpload
+                  endpoint="galleryImages"
+                  onClientUploadComplete={(res) => {
+                    console.log('Gallery upload response:', res);
+                    if (res && Array.isArray(res)) {
+                      res.forEach((file: any) => {
+                        if (file && file.url) {
+                          handleGalleryImageUpload(file.url);
+                        }
+                      });
+                    } else {
+                      toast.error('Upload completed but no files received');
+                    }
+                  }}
+                  onUploadError={(error: Error) => {
+                    console.error('Gallery upload error:', error);
+                    toast.error(`Upload failed: ${error.message}`);
+                  }}
+                />
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                  {formData.galleryImages.map((image: string, index: number) => (
-                    <div key={index} className="relative">
-                      <img 
-                        src={image} 
-                        alt={`Gallery ${index + 1}`} 
-                        className="w-full h-32 object-cover rounded-md"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => removeGalleryImage(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                {formData.galleryImages.length > 0 && (
+                  <div className="mt-4">
+                    <Label className="text-sm text-gray-600 mb-2 block">Current Gallery Images ({formData.galleryImages.length}):</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {formData.galleryImages.map((image: string, index: number) => (
+                        <div key={index} className="relative group cursor-pointer">
+                          <img 
+                            src={image} 
+                            alt={`Gallery ${index + 1}`} 
+                            className="w-full h-32 object-cover object-center rounded-md transition-transform group-hover:scale-105"
+                            onClick={() => {
+                              setSelectedImageIndex(index);
+                              setGalleryViewerOpen(true);
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-md flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-white text-sm font-medium">
+                              Click to view
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeGalleryImage(index);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

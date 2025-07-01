@@ -1,26 +1,25 @@
-// components/ui/upload-button.tsx
 "use client";
 
 import { useState } from "react";
-import { UploadDropzone } from "@/lib/uploadthing-client";
+import { UploadButton } from "@/lib/uploadthing-client";
 import { Loader2 } from "lucide-react";
 
-interface UploadButtonProps {
+interface SimpleUploadProps {
   endpoint: "eventImage" | "galleryImages";
   onClientUploadComplete?: (res: any) => void;
   onUploadError?: (error: Error) => void;
 }
 
-export function UploadButton({
+export function SimpleUpload({
   endpoint,
   onClientUploadComplete,
   onUploadError,
-}: UploadButtonProps) {
+}: SimpleUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   return (
     <div className="w-full">
-      <UploadDropzone
+      <UploadButton
         endpoint={endpoint}
         onClientUploadComplete={(res) => {
           console.log("Upload completed:", res);
@@ -39,13 +38,10 @@ export function UploadButton({
         onUploadProgress={(progress) => {
           console.log("Upload progress:", progress);
         }}
-        className="border-dashed border-2 border-gray-300 rounded-lg p-6 ut-label:text-lg ut-allowed-content:text-sm ut-button:bg-primary ut-button:text-white ut-button:hover:bg-primary/90 ut-upload-icon:text-primary"
+        className="ut-button:bg-primary ut-button:text-white ut-button:hover:bg-primary/90"
         content={{
+          button: "Choose Image",
           allowedContent: "Images up to 10MB",
-          label: "Drop images here or click to browse",
-        }}
-        config={{
-          mode: "auto",
         }}
       />
       
@@ -57,4 +53,4 @@ export function UploadButton({
       )}
     </div>
   );
-}
+} 

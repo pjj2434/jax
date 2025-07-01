@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, count } from "drizzle-orm";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
+import { revalidatePath } from 'next/cache';
+import { deleteUploadThingFiles } from "@/lib/uploadthing";
 
 // GET - Fetch events (public access)
 export async function GET(request: NextRequest) {
@@ -32,6 +34,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         ...eventData[0],
         attendeeCount: attendeeCount[0]?.count || 0
+      }, {
+        headers: {
+          'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+        }
       });
     }
     
@@ -73,7 +79,11 @@ export async function GET(request: NextRequest) {
       return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
     });
     
-    return NextResponse.json(eventsWithCounts);
+    return NextResponse.json(eventsWithCounts, {
+      headers: {
+        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+      }
+    });
   } catch (error) {
     console.error("Error fetching events:", error);
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
@@ -105,7 +115,14 @@ export async function POST(request: NextRequest) {
       maxAttendees, 
       isActive, 
       sectionId,
-      showCapacity // New field for capacity toggle
+      showCapacity, // New field for capacity toggle
+      detailedContent, // Add this
+      eventType,
+      allowSignups,
+      participantsPerSignup,
+      featuredImage,
+      galleryImages,
+      quickLinks
     } = body;
 
     if (!title) {
@@ -122,10 +139,20 @@ export async function POST(request: NextRequest) {
       isActive: isActive !== undefined ? isActive : true,
       sectionId,
       showCapacity: showCapacity !== undefined ? showCapacity : true, // Default to true if not specified
+      detailedContent, // Add this
+      eventType: eventType || "event",
+      allowSignups: allowSignups !== undefined ? allowSignups : true,
+      participantsPerSignup: participantsPerSignup || 1,
+      featuredImage: featuredImage || null,
+      galleryImages: galleryImages || null,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdById: userId,
     }).returning();
+
+    revalidatePath('/');
+    revalidatePath('/admin/events');
+    revalidatePath('/admin/signups');
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
@@ -157,7 +184,14 @@ export async function PUT(request: NextRequest) {
       maxAttendees, 
       isActive, 
       sectionId,
-      showCapacity // New field for capacity toggle
+      showCapacity, // New field for capacity toggle
+      detailedContent, // Add this
+      eventType,
+      allowSignups,
+      participantsPerSignup,
+      featuredImage,
+      galleryImages,
+      quickLinks
     } = body;
 
     if (!id || !title) {
@@ -174,6 +208,12 @@ export async function PUT(request: NextRequest) {
         isActive: isActive !== undefined ? isActive : true,
         sectionId,
         showCapacity: showCapacity !== undefined ? showCapacity : true, // Default to true if not specified
+        detailedContent, // Add this
+        eventType: eventType || "event",
+        allowSignups: allowSignups !== undefined ? allowSignups : true,
+        participantsPerSignup: participantsPerSignup || 1,
+        featuredImage: featuredImage || null,
+        galleryImages: galleryImages || null,
         updatedAt: new Date(),
       })
       .where(eq(event.id, id))
@@ -182,6 +222,10 @@ export async function PUT(request: NextRequest) {
     if (updatedEvent.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    revalidatePath('/');
+    revalidatePath('/admin/events');
+    revalidatePath('/admin/signups');
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {
@@ -217,7 +261,45 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    // Collect all image URLs to delete from UploadThing
+    const imageUrls: string[] = [];
+    
+    // Add featured image if it exists
+    if (existingEvent[0].featuredImage) {
+      imageUrls.push(existingEvent[0].featuredImage);
+    }
+    
+    // Add gallery images if they exist
+    if (existingEvent[0].galleryImages) {
+      try {
+        const galleryImages = JSON.parse(existingEvent[0].galleryImages);
+        if (Array.isArray(galleryImages)) {
+          imageUrls.push(...galleryImages);
+        }
+      } catch (error) {
+        console.error('Error parsing gallery images:', error);
+      }
+    }
+
+    // Delete the event from database
     await db.delete(event).where(eq(event.id, id));
+
+    // Delete images from UploadThing (don't wait for this to complete)
+    if (imageUrls.length > 0) {
+      // Use the deleteUploadThingFiles function directly since we're already server-side
+      import('@/lib/uploadthing').then(({ deleteUploadThingFiles }) => {
+        deleteUploadThingFiles(imageUrls).catch(error => {
+          console.error('Error deleting images from UploadThing:', error);
+        });
+      }).catch(error => {
+        console.error('Error importing deleteUploadThingFiles:', error);
+      });
+    }
+
+    revalidatePath('/');
+    revalidatePath('/admin/events');
+    revalidatePath('/admin/signups');
+
     return NextResponse.json({ 
       success: true, 
       message: "Event deleted successfully" 

@@ -4,6 +4,7 @@ import { event } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
+import { deleteUploadThingFiles } from "@/lib/uploadthing";
 
 // GET - Fetch a single event by ID (public access)
 export async function GET(
@@ -23,7 +24,11 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    return NextResponse.json(eventData[0]);
+    return NextResponse.json(eventData[0], {
+      headers: {
+        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
+      }
+    });
   } catch (error) {
     console.error("Error fetching event:", error);
     return NextResponse.json({ error: "Failed to fetch event" }, { status: 500 });
@@ -130,7 +135,41 @@ export async function DELETE(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    // Collect all image URLs to delete from UploadThing
+    const imageUrls: string[] = [];
+    
+    // Add featured image if it exists
+    if (existingEvent[0].featuredImage) {
+      imageUrls.push(existingEvent[0].featuredImage);
+    }
+    
+    // Add gallery images if they exist
+    if (existingEvent[0].galleryImages) {
+      try {
+        const galleryImages = JSON.parse(existingEvent[0].galleryImages);
+        if (Array.isArray(galleryImages)) {
+          imageUrls.push(...galleryImages);
+        }
+      } catch (error) {
+        console.error('Error parsing gallery images:', error);
+      }
+    }
+
+    // Delete the event from database
     await db.delete(event).where(eq(event.id, id));
+
+    // Delete images from UploadThing (don't wait for this to complete)
+    if (imageUrls.length > 0) {
+      // Use the deleteUploadThingFiles function directly since we're already server-side
+      import('@/lib/uploadthing').then(({ deleteUploadThingFiles }) => {
+        deleteUploadThingFiles(imageUrls).catch(error => {
+          console.error('Error deleting images from UploadThing:', error);
+        });
+      }).catch(error => {
+        console.error('Error importing deleteUploadThingFiles:', error);
+      });
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: "Event deleted successfully" 
