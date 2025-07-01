@@ -1,7 +1,7 @@
 // app/events/[Id]/page.tsx
 import EventDetailClient from './EventDetailClient';
 
-export const revalidate = false;
+export const revalidate = 31536000;
 
 export default async function EventDetailPage({ params }: { params: { Id: string } }) {
   const { Id } = params;
