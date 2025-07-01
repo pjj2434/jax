@@ -177,8 +177,8 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
       
       await onSubmit(processedData);
       
-      // If this is an update and we have quick links, save them separately
-      if (initialData?.id && formData.quickLinks.length > 0) {
+      // Always update quick links for existing events, even if empty
+      if (initialData?.id) {
         try {
           const quickLinksRes = await fetch(`/api/events/${initialData.id}/links`, {
             method: 'POST',
