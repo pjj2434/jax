@@ -59,6 +59,7 @@ interface Event {
   sectionId: string | null;
   attendeeCount?: number;
   quickLinks?: QuickLink[];
+  galleryImages?: string | string[];
 }
 
 export default function EventsPage() {
@@ -84,6 +85,7 @@ export default function EventsPage() {
     isActive: true,
     showCapacity: true,
     sectionId: "none",
+    galleryImages: [],
   });
   
   // Media query for responsive design
@@ -160,21 +162,32 @@ export default function EventsPage() {
     e.preventDefault();
     
     try {
+      // Ensure galleryImages is an array
+      let galleryImages = formData.galleryImages;
+      if (typeof galleryImages === 'string') {
+        try {
+          galleryImages = JSON.parse(galleryImages);
+        } catch {
+          galleryImages = [];
+        }
+      }
+      // Build payload, omitting createdAt, updatedAt, createdById if present
       const eventData = {
         ...formData,
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : null,
         sectionId: formData.sectionId === "none" ? null : formData.sectionId,
+        galleryImages,
       };
+      if ('createdAt' in eventData) delete eventData.createdAt;
+      if ('updatedAt' in eventData) delete eventData.updatedAt;
+      if ('createdById' in eventData) delete eventData.createdById;
 
       if (editingEvent) {
         // Update existing event
         const res = await fetch("/api/events", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: editingEvent.id,
-            ...eventData,
-          }),
+          body: JSON.stringify({ id: editingEvent.id, ...eventData }),
         });
 
         if (!res.ok) {
@@ -218,6 +231,11 @@ export default function EventsPage() {
       isActive: event.isActive,
       showCapacity: event.showCapacity !== undefined ? event.showCapacity : true,
       sectionId: event.sectionId || "none",
+      galleryImages: Array.isArray(event.galleryImages)
+        ? event.galleryImages
+        : (typeof event.galleryImages === 'string' && event.galleryImages.trim().startsWith('['))
+          ? (() => { try { return JSON.parse(event.galleryImages); } catch { return []; } })()
+          : [],
     });
     setIsCreating(true);
   };
@@ -290,6 +308,7 @@ export default function EventsPage() {
       isActive: true,
       showCapacity: true,
       sectionId: "none",
+      galleryImages: [],
     });
     setEditingEvent(null);
     setIsCreating(false);
