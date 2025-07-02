@@ -25,9 +25,18 @@ export async function generateMetadata({ params }: { params: Promise<{ Id: strin
   if (!eventRes.ok) return {};
   const eventData = await eventRes.json();
 
+  // Use the same logo logic as the event detail page
+  const getLogoConfig = (logoType: string) => {
+    const logoMap: Record<string, { src: string; alt: string }> = {
+      'jax': { src: '/logo.png', alt: 'JAX Logo' },
+      'jsl': { src: '/jsl.png', alt: 'JSL Logo' }
+    };
+    return logoMap[logoType] || logoMap['jsl'];
+  };
+
   const ogImage = eventData.featuredImage
     ? (eventData.featuredImage.startsWith("http") ? eventData.featuredImage : `${baseUrl}${eventData.featuredImage}`)
-    : `${baseUrl}/jsl.png`;
+    : `${baseUrl}${getLogoConfig(eventData.logoType || 'jsl').src}`;
 
   return {
     title: eventData.title || "Event",
