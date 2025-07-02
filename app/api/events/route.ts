@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         };
       },
       ['event-fetch'],
-      { tags: (id: string) => [`event-${id}`] }
+      { tags: ['events', 'event-detail'] }
     );
 
     const getEvents = unstable_cache(
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       { tags: ['events'] }
     );
 
-    if (id) {
+    if (id && id.trim() !== '') {
       const result = await getEvent(id);
       if (!result) {
         return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
       showCapacity, // New field for capacity toggle
       detailedContent, // Add this
       eventType,
+      logoType,
       allowSignups,
       participantsPerSignup,
       featuredImage,
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
       showCapacity: showCapacity !== undefined ? showCapacity : true, // Default to true if not specified
       detailedContent, // Add this
       eventType: eventType || "event",
+      logoType: logoType || "jsl",
       allowSignups: allowSignups !== undefined ? allowSignups : true,
       participantsPerSignup: participantsPerSignup || 1,
       featuredImage: featuredImage || null,
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
     }).returning();
 
     revalidateTag('events');
-    revalidateTag(`event-${newEvent[0].id}`);
+    revalidateTag('event-detail');
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
@@ -175,6 +177,7 @@ export async function PUT(request: NextRequest) {
       showCapacity, // New field for capacity toggle
       detailedContent, // Add this
       eventType,
+      logoType,
       allowSignups,
       participantsPerSignup,
       featuredImage,
@@ -198,6 +201,7 @@ export async function PUT(request: NextRequest) {
         showCapacity: showCapacity !== undefined ? showCapacity : true, // Default to true if not specified
         detailedContent, // Add this
         eventType: eventType || "event",
+        logoType: logoType || "jsl",
         allowSignups: allowSignups !== undefined ? allowSignups : true,
         participantsPerSignup: participantsPerSignup || 1,
         featuredImage: featuredImage || null,
@@ -212,7 +216,7 @@ export async function PUT(request: NextRequest) {
     }
 
     revalidateTag('events');
-    revalidateTag(`event-${id}`);
+    revalidateTag('event-detail');
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {
@@ -284,6 +288,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     revalidateTag('events');
+    revalidateTag('event-detail');
 
     return NextResponse.json({ 
       success: true, 

@@ -60,6 +60,12 @@ interface Event {
   attendeeCount?: number;
   quickLinks?: QuickLink[];
   galleryImages?: string | string[];
+  eventType?: string;
+  logoType?: string;
+  allowSignups?: boolean;
+  participantsPerSignup?: number;
+  featuredImage?: string;
+  detailedContent?: string;
 }
 
 export default function EventsPage() {

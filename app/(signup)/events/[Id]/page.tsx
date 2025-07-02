@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 
 export const revalidate = 31536000;
 
-export default async function EventDetailPage({ params }: { params: { Id: string } }) {
-  const { Id } = params;
+export default async function EventDetailPage({ params }: { params: Promise<{ Id: string }> }) {
+  const { Id } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`);
   if (!eventRes.ok) return <div>Event not found</div>;
@@ -18,8 +18,8 @@ export default async function EventDetailPage({ params }: { params: { Id: string
   return <EventDetailClient event={eventData} quickLinks={quickLinks} />;
 }
 
-export async function generateMetadata({ params }: { params: { Id: string } }): Promise<Metadata> {
-  const { Id } = params;
+export async function generateMetadata({ params }: { params: Promise<{ Id: string }> }): Promise<Metadata> {
+  const { Id } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`);
   if (!eventRes.ok) return {};

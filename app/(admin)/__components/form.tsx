@@ -47,6 +47,7 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
     
     // New fields
     eventType: initialData?.eventType || "event",
+    logoType: initialData?.logoType || "jsl",
     allowSignups: initialData?.allowSignups !== undefined ? initialData.allowSignups : true,
     participantsPerSignup: initialData?.participantsPerSignup || 1,
     featuredImage: initialData?.featuredImage || "",
@@ -295,6 +296,26 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
               <SelectContent>
                 <SelectItem value="event">Event</SelectItem>
                 <SelectItem value="league">League</SelectItem>
+                <SelectItem value="tournament">Tournament</SelectItem>
+                <SelectItem value="workshop">Workshop</SelectItem>
+                <SelectItem value="social">Social</SelectItem>
+                <SelectItem value="competition">Competition</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="logoType">Logo Type</Label>
+            <Select
+              value={formData.logoType}
+              onValueChange={handleSelectChange("logoType")}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select logo type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="jsl">JSL Logo</SelectItem>
+                <SelectItem value="jax">JAX Logo</SelectItem>
               </SelectContent>
             </Select>
           </div>

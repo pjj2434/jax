@@ -309,7 +309,12 @@ const handleContactSubmit = async (e: React.FormEvent) => {
   <CardHeader className={hasMinimalContent(event) ? "pb-2" : ""}>
     <div className="flex justify-between items-start mb-2">
       <div className="inline-block px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-        {event.eventType === "league" ? "League" : "Event"}
+                        {event.eventType === "league" ? "League" : 
+                 event.eventType === "tournament" ? "Tournament" :
+                 event.eventType === "workshop" ? "Workshop" :
+                 event.eventType === "social" ? "Social" :
+                 event.eventType === "competition" ? "Competition" :
+                 "Event"}
       </div>
       {event.showCapacity && event.maxAttendees && (
         <div className={`text-xs font-medium ${isEventFull(event) ? "text-red-500" : "text-green-600"}`}>
@@ -344,7 +349,12 @@ const handleContactSubmit = async (e: React.FormEvent) => {
   <CardFooter className={hasMinimalContent(event) ? "pt-2" : ""}>
     <Link href={`/events/${event.id}`} passHref className="w-full">
       <Button className="w-full">
-        {event.eventType === "league" ? "View League" : "View Event"}
+                        {event.eventType === "league" ? "View League" : 
+                 event.eventType === "tournament" ? "View Tournament" :
+                 event.eventType === "workshop" ? "View Workshop" :
+                 event.eventType === "social" ? "View Social" :
+                 event.eventType === "competition" ? "View Competition" :
+                 "View Event"}
       </Button>
     </Link>
   </CardFooter>

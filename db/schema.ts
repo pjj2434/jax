@@ -1,4 +1,3 @@
-
 import { sqliteTable, text, integer  } from "drizzle-orm/sqlite-core";
 			
 export const user = sqliteTable("user", {
@@ -82,6 +81,7 @@ export const event = sqliteTable("event", {
   
   // New fields
   eventType: text("event_type").notNull().default("event"), // "event" or "league"
+  logoType: text("logo_type").notNull().default("jsl"), // "jsl", "logo", "jax", etc.
   allowSignups: integer("allow_signups", { mode: "boolean" }).default(true),
   participantsPerSignup: integer("participants_per_signup").default(1),
   featuredImage: text("featured_image"),

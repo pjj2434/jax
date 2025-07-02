@@ -32,6 +32,27 @@ function fallbackCopyToClipboard(text: string) {
   document.body.removeChild(textArea);
 }
 
+// Helper functions for event types and logos
+const getEventTypeDisplay = (eventType: string) => {
+  const typeMap: Record<string, string> = {
+    'league': 'League',
+    'tournament': 'Tournament',
+    'workshop': 'Workshop',
+    'social': 'Social',
+    'competition': 'Competition',
+    'event': 'Event'
+  };
+  return typeMap[eventType] || 'Event';
+};
+
+const getLogoConfig = (logoType: string) => {
+  const logoMap: Record<string, { src: string; alt: string }> = {
+    'jax': { src: '/logo.png', alt: 'JAX Logo' },
+    'jsl': { src: '/jsl.png', alt: 'JSL Logo' }
+  };
+  return logoMap[logoType] || logoMap['jsl'];
+};
+
 export default function EventDetailClient({ event, quickLinks }: { event: any, quickLinks: any[] }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("details");
@@ -131,8 +152,8 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
         <div className="flex justify-center mb-8">
           <div className="text-center">
             <Image
-              src="/jsl.png"
-              alt="JAX Logo"
+              src={getLogoConfig(event.logoType).src}
+              alt={getLogoConfig(event.logoType).alt}
               width={200}
               height={60}
               className="mx-auto mb-2"
@@ -153,7 +174,7 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
               <div className="absolute bottom-0 left-0 p-6 text-white">
                 <div className="inline-block px-3 py-1 rounded-full bg-primary text-white text-sm font-medium mb-2">
-                  {event.eventType === "league" ? "League" : "Event"}
+                  {getEventTypeDisplay(event.eventType)}
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold">{event.title}</h1>
               </div>
@@ -161,7 +182,7 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
           ) : (
             <div className="mb-6">
               <div className="inline-block px-3 py-1 rounded-full bg-primary text-white text-sm font-medium mb-2">
-                {event.eventType === "league" ? "League" : "Event"}
+                {getEventTypeDisplay(event.eventType)}
               </div>
               <h1 className="text-3xl md:text-4xl font-bold">{event.title}</h1>
             </div>
