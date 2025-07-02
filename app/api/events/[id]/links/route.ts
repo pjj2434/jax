@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { quickLink } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { revalidatePath } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET(
@@ -18,18 +18,21 @@ export async function GET(
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    // Fetch quick links for the event
-    const links = await db
-      .select()
-      .from(quickLink)
-      .where(eq(quickLink.eventId, id))
-      .orderBy(quickLink.order);
+    // Use unstable_cache for quick links fetch, scoped to this event ID
+    const getQuickLinks = unstable_cache(
+      async () => {
+        return await db
+          .select()
+          .from(quickLink)
+          .where(eq(quickLink.eventId, id))
+          .orderBy(quickLink.order);
+      },
+      ['quick-links-fetch', id],
+      { tags: [`quick-links-${id}`] }
+    );
 
-    return NextResponse.json(links, {
-      headers: {
-        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
-      }
-    });
+    const links = await getQuickLinks();
+    return NextResponse.json(links);
   } catch (error) {
     console.error("Error fetching quick links:", error);
     return NextResponse.json({ error: "Failed to fetch quick links" }, { status: 500 });
@@ -80,10 +83,8 @@ export async function POST(
       }
     }
 
-    revalidatePath('/');
-    revalidatePath('/admin/events');
-    revalidatePath(`/events/${id}`);
-
+    revalidateTag('events');
+    revalidateTag(`quick-links-${id}`);
     return NextResponse.json({ success: true, message: "Quick links updated successfully" });
   } catch (error) {
     console.error("Error updating quick links:", error);

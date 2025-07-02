@@ -5,18 +5,21 @@ import { eq } from "drizzle-orm";
 import { section } from "@/db/schema";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
-import { revalidatePath } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 
 // GET - Fetch all sections (public access)
 export async function GET() {
   try {
-    // Fetch sections ordered by the order field (default ascending)
-    const sections = await db.select().from(section).orderBy(section.order);
-    return NextResponse.json(sections, {
-      headers: {
-        'Cache-Control': 's-maxage=31536000, stale-while-revalidate'
-      }
-    });
+    // Use unstable_cache for section fetch
+    const getSections = unstable_cache(
+      async () => {
+        return await db.select().from(section).orderBy(section.order);
+      },
+      ['sections-fetch'],
+      { tags: ['sections'] }
+    );
+    const sections = await getSections();
+    return NextResponse.json(sections);
   } catch (error) {
     console.error("Error fetching sections:", error);
     return NextResponse.json({ error: "Failed to fetch sections" }, { status: 500 });
@@ -56,9 +59,8 @@ export async function POST(request: NextRequest) {
       createdById: userId, // Use the userId from the session
     }).returning();
 
-    revalidatePath('/');
-    revalidatePath('/admin/sections');
-    revalidatePath('/admin/events');
+    revalidateTag('sections');
+    revalidateTag('events');
 
     return NextResponse.json(newSection[0], { status: 201 });
   } catch (error) {
@@ -101,9 +103,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
-    revalidatePath('/');
-    revalidatePath('/admin/sections');
-    revalidatePath('/admin/events');
+    revalidateTag('sections');
+    revalidateTag('events');
 
     return NextResponse.json(updatedSection[0]);
   } catch (error) {
@@ -141,9 +142,8 @@ export async function DELETE(request: NextRequest) {
 
     await db.delete(section).where(eq(section.id, id));
 
-    revalidatePath('/');
-    revalidatePath('/admin/sections');
-    revalidatePath('/admin/events');
+    revalidateTag('sections');
+    revalidateTag('events');
 
     return NextResponse.json({ success: true, message: "Section deleted successfully" });
   } catch (error) {
