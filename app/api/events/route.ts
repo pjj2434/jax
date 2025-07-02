@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { deleteUploadThingFiles } from "@/lib/uploadthing";
+import { revalidatePath } from 'next/cache';
 
 // GET - Fetch events (public access)
 export async function GET(request: NextRequest) {
@@ -143,6 +144,7 @@ export async function POST(request: NextRequest) {
 
     revalidateTag('events');
     revalidateTag('event-detail');
+    revalidatePath(`/events/${newEvent[0].id}`);
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
@@ -217,6 +219,7 @@ export async function PUT(request: NextRequest) {
 
     revalidateTag('events');
     revalidateTag('event-detail');
+    revalidatePath(`/events/${updatedEvent[0].id}`);
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {

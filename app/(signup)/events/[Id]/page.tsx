@@ -2,12 +2,14 @@
 import EventDetailClient from './EventDetailClient';
 import type { Metadata } from "next";
 
-export const revalidate = 31536000;
+export const revalidate = 3600; // 1 hour instead of 1 year
 
 export default async function EventDetailPage({ params }: { params: Promise<{ Id: string }> }) {
   const { Id } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`);
+  const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`, {
+    next: { revalidate: 3600 } // Cache for 1 hour
+  });
   if (!eventRes.ok) return <div>Event not found</div>;
   const eventData = await eventRes.json();
   if (eventData.galleryImages && typeof eventData.galleryImages === "string") {
@@ -21,7 +23,9 @@ export default async function EventDetailPage({ params }: { params: Promise<{ Id
 export async function generateMetadata({ params }: { params: Promise<{ Id: string }> }): Promise<Metadata> {
   const { Id } = await params;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`);
+  const eventRes = await fetch(`${baseUrl}/api/events?id=${Id}`, {
+    next: { revalidate: 3600 } // Cache for 1 hour
+  });
   if (!eventRes.ok) return {};
   const eventData = await eventRes.json();
 
@@ -37,6 +41,15 @@ export async function generateMetadata({ params }: { params: Promise<{ Id: strin
   const ogImage = eventData.featuredImage
     ? (eventData.featuredImage.startsWith("http") ? eventData.featuredImage : `${baseUrl}${eventData.featuredImage}`)
     : `${baseUrl}${getLogoConfig(eventData.logoType || 'jsl').src}`;
+
+  // Debug logging
+  console.log('Metadata generation for event:', {
+    id: Id,
+    title: eventData.title,
+    logoType: eventData.logoType,
+    featuredImage: eventData.featuredImage,
+    ogImage: ogImage
+  });
 
   return {
     title: eventData.title || "Event",
