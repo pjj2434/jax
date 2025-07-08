@@ -26,6 +26,9 @@ interface EventFormProps {
 }
 
 export default function EventForm({ initialData, onSubmit, onCancel, sections = [] }: EventFormProps) {
+  console.log('EventForm initialData:', initialData); // Debug log
+  console.log('EventForm initialData.addToSchedule:', initialData?.addToSchedule); // Debug log
+  
   let galleryImages: string[] = [];
   if (initialData?.galleryImages) {
     try {
@@ -54,12 +57,20 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
     galleryImages,
     detailedContent: initialData?.detailedContent || "",
     quickLinks: initialData?.quickLinks || [],
+    addToSchedule: initialData?.addToSchedule || false,
   });
+  
+  console.log('EventForm initial formData:', {
+    ...formData,
+    addToSchedule: initialData?.addToSchedule || false
+  }); // Debug log
   
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   const [galleryViewerOpen, setGalleryViewerOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -67,6 +78,7 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
   };
 
   const handleSwitchChange = (field: string) => (checked: boolean) => {
+    console.log(`Switch changed - ${field}:`, checked); // Debug log
     setFormData(prev => ({ ...prev, [field]: checked }));
   };
 
@@ -174,8 +186,11 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
         maxAttendees: formData.maxAttendees ? parseInt(formData.maxAttendees) : null,
         sectionId: formData.sectionId === "none" ? null : formData.sectionId,
         galleryImages: JSON.stringify(formData.galleryImages),
+        addToSchedule: formData.addToSchedule, // Explicitly include addToSchedule
       };
       
+      console.log('Form processedData:', processedData); // Debug log
+      console.log('Form addToSchedule in processedData:', processedData.addToSchedule); // Debug log
       await onSubmit(processedData);
       
       // Always update quick links for existing events, even if empty
@@ -327,6 +342,18 @@ export default function EventForm({ initialData, onSubmit, onCancel, sections = 
               onCheckedChange={handleSwitchChange("isActive")}
             />
             <Label htmlFor="isActive">Active</Label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="addToSchedule"
+              checked={formData.addToSchedule}
+              onCheckedChange={handleSwitchChange("addToSchedule")}
+            />
+            <Label htmlFor="addToSchedule">Add to Schedule</Label>
+            <span className="text-sm text-gray-500 ml-2">
+              {formData.addToSchedule ? "(Event will be in schedule)" : "(Event will not be in schedule)"}
+            </span>
           </div>
         </TabsContent>
         

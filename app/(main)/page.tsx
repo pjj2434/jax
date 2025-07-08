@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { Navbar } from "@/components/nav";
 
 interface Section {
   id: string;
@@ -29,6 +30,7 @@ interface Event {
   showCapacity: boolean;
   attendeeCount: number;
   eventType: string;
+  isActive: boolean;
 }
 
 // Animation variants
@@ -62,13 +64,23 @@ export default function HomePage() {
     const fetchData = async () => {
       try {
         // Fetch sections
-        const sectionsRes = await fetch('/api/sections');
+        const sectionsRes = await fetch('/api/sections', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         if (!sectionsRes.ok) throw new Error('Failed to fetch sections');
         const sectionsData = await sectionsRes.json();
         setSections(sectionsData);
 
         // Fetch events
-        const eventsRes = await fetch('/api/events');
+        const eventsRes = await fetch('/api/events', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         if (!eventsRes.ok) throw new Error('Failed to fetch events');
         const eventsData = await eventsRes.json();
         setEvents(eventsData);
@@ -83,14 +95,19 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // Group events by section
-  const eventsBySection = sections.map(section => {
-    const sectionEvents = events.filter(event => event.sectionId === section.id);
-    return {
-      ...section,
-      events: sectionEvents
-    };
-  });
+  // Group events by section and filter out sections with no active events
+  const eventsBySection = sections
+    .map(section => {
+      const sectionEvents = events.filter(event => event.sectionId === section.id && event.isActive);
+      return {
+        ...section,
+        events: sectionEvents
+      };
+    })
+    .filter(section => section.events.length > 0); // Only show sections with active events
+
+  // Check if there are any active events at all
+  const hasAnyActiveEvents = events.filter(event => event.isActive).length > 0;
 
   // Determine if an event has minimal content
   const hasMinimalContent = (event: Event) => {
@@ -172,6 +189,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
 
   return (
     <div className="bg-black text-white">
+      <Navbar hasActiveEvents={hasAnyActiveEvents} />
       {/* Hero Section with Full-Screen Height Image */}
       <div id="hero" className="relative overflow-hidden h-screen">
         {/* Semi-transparent overlay for better text readability */}
@@ -215,9 +233,11 @@ const handleContactSubmit = async (e: React.FormEvent) => {
               transition={{ delay: 0.6, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
-              <Button size="lg" variant="default" asChild className="font-medium bg-primary hover:bg-primary/90">
-                <a href="#events">View Events</a>
-              </Button>
+              {hasAnyActiveEvents && (
+                <Button size="lg" variant="default" asChild className="font-medium bg-primary hover:bg-primary/90">
+                  <a href="#events">View Events</a>
+                </Button>
+              )}
               <Button size="lg" variant="default" asChild className="font-medium  text-white hover:bg-black/10">
                 <a href="#about">About Us</a>
               </Button>
@@ -225,37 +245,40 @@ const handleContactSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
         
-        {/* Scroll Down Indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, y: [0, 10, 0] }}
-          transition={{ 
-            opacity: { delay: 1, duration: 1 },
-            y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
-          }}
-        >
-          <a href="#events" className="flex flex-col items-center text-white">
-            <span className="text-sm mb-2">Scroll Down</span>
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M12 5v14M5 12l7 7 7-7"/>
-            </svg>
-          </a>
-        </motion.div>
+        {/* Scroll Down Indicator - Only show if there are events */}
+        {hasAnyActiveEvents && (
+          <motion.div 
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, y: [0, 10, 0] }}
+            transition={{ 
+              opacity: { delay: 1, duration: 1 },
+              y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
+            }}
+          >
+            <a href="#events" className="flex flex-col items-center text-white">
+              <span className="text-sm mb-2">Scroll Down</span>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              >
+                <path d="M12 5v14M5 12l7 7 7-7"/>
+              </svg>
+            </a>
+          </motion.div>
+        )}
       </div>
 
-      {/* Events Section */}
-      <div id="events" ref={eventsRef} className="py-16 border-t border-gray-800">
+      {/* Events Section - Only show if there are active events */}
+      {hasAnyActiveEvents && (
+        <div id="events" ref={eventsRef} className="py-16 border-t border-gray-800">
         <div className="container mx-auto px-4">
           <motion.h2 
             className="text-3xl font-bold mb-12 text-center"
@@ -347,16 +370,22 @@ const handleContactSubmit = async (e: React.FormEvent) => {
   </CardContent>
   
   <CardFooter className={hasMinimalContent(event) ? "pt-2" : ""}>
-    <Link href={`/events/${event.id}`} passHref className="w-full">
-      <Button className="w-full">
-                        {event.eventType === "league" ? "View League" : 
-                 event.eventType === "tournament" ? "View Tournament" :
-                 event.eventType === "workshop" ? "View Workshop" :
-                 event.eventType === "social" ? "View Social" :
-                 event.eventType === "competition" ? "View Competition" :
-                 "View Event"}
-      </Button>
-    </Link>
+    {event.isActive ? (
+      <Link href={`/events/${event.id}`} passHref className="w-full">
+        <Button className="w-full">
+          {event.eventType === "league" ? "View League" : 
+   event.eventType === "tournament" ? "View Tournament" :
+   event.eventType === "workshop" ? "View Workshop" :
+   event.eventType === "social" ? "View Social" :
+   event.eventType === "competition" ? "View Competition" :
+   "View Event"}
+        </Button>
+      </Link>
+    ) : (
+      <div className="w-full text-center">
+        <span className="text-sm text-gray-500">Event Inactive</span>
+      </div>
+    )}
   </CardFooter>
 </Card>
                         </motion.div>
@@ -371,7 +400,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
           )}
 
           {/* Show events without a section */}
-          {events.filter(event => !event.sectionId).length > 0 && (
+          {events.filter(event => !event.sectionId && event.isActive).length > 0 && (
             <motion.div 
               className="mb-16"
               initial="hidden"
@@ -389,7 +418,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
                 viewport={{ once: true }}
               >
                 {events
-                  .filter(event => !event.sectionId)
+                  .filter(event => !event.sectionId && event.isActive)
                   .map(event => {
                     const eventIsFull = isEventFull(event);
                     const remainingSpots = getRemainingSpots(event);
@@ -475,135 +504,67 @@ const handleContactSubmit = async (e: React.FormEvent) => {
             </motion.div>
           )}
 
-          {sections.length === 0 && events.length === 0 && (
-            <motion.div 
-              className="text-center py-16"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <p className="text-gray-400 text-lg">No events available at this time.</p>
-              <p className="text-gray-500 mt-2">Please check back later for upcoming events.</p>
-            </motion.div>
-          )}
+
         </div>
       </div>
+      )}
 
-      {/* About Section */}
-      <div id="about" ref={aboutRef} className="py-16 bg-gray-600 border-t border-gray-800">
-        <div className="container mx-auto px-4">
-          <motion.h2 
-            className="text-3xl font-bold mb-12 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            About JAX 
-          </motion.h2>
+{/* About Section */}
+<div id="about" ref={aboutRef} className="py-16 bg-gray-600 border-t border-gray-800">
+  <div className="container mx-auto px-4">
+    <motion.h2 
+      className="text-3xl font-bold mb-12 text-center"
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+    >
+      About JAX 
+    </motion.h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <div className="relative h-[400px] rounded-lg overflow-hidden">
-                <Image 
-                  src="/jax.jpg" // Replace with an image of your bar
-                  alt="JAX Darts Bar"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-6"
-            >
-              <h3 className="text-2xl font-semibold border-l-4 border-primary pl-3">The Premier Darts Destination</h3>
-              <p className="text-gray-300">
-                JAX  Bar is the ultimate destination for dart enthusiasts of all skill levels. 
-                Established in 2015, we've built a community around the love of the game, offering 
-                professional-grade equipment, expert instruction, and a vibrant atmosphere.
-              </p>
-              <p className="text-gray-300">
-                Our facility features 12 professional dart boards, a full-service bar with craft beers 
-                and signature cocktails, and comfortable seating throughout. Whether you're a seasoned 
-                pro or just looking to try something new, JAX is the place to be.
-              </p>
-              <div className="grid grid-cols-2 gap-4 pt-4">
-                <div className="bg-black/30 p-4 rounded-lg text-center">
-                  <h4 className="text-xl font-bold  text-white">12</h4>
-                  <p className="text-gray-400">Professional Boards</p>
-                </div>
-                <div className="bg-black/30 p-4 rounded-lg text-center">
-                  <h4 className="text-xl font-bold  text-white">20+</h4>
-                  <p className="text-gray-400">Weekly Events</p>
-                </div>
-                <div className="bg-black/30 p-4 rounded-lg text-center">
-                  <h4 className="text-xl font-bold  text-white">5</h4>
-                  <p className="text-gray-400">Leagues</p>
-                </div>
-                <div className="bg-black/30 p-4 rounded-lg text-center">
-                  <h4 className="text-xl font-bold  text-white">1000+</h4>
-                  <p className="text-gray-400">Members</p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="bg-black/30 p-6 rounded-lg"
-            >
-              <h3 className="text-xl font-semibold mb-4 text-white">Leagues & Tournaments</h3>
-              <p className="text-gray-400">
-                Join our weekly leagues and monthly tournaments for players of all skill levels. 
-                Compete for prizes, rankings, and bragging rights in our friendly but competitive environment.
-              </p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="bg-black/30 p-6 rounded-lg"
-            >
-              <h3 className="text-xl font-semibold mb-4 text-white">Full-Service Bar</h3>
-              <p className="text-gray-400">
-                Enjoy our selection of craft beers, premium spirits, and signature cocktails 
-                while you play. Our bar staff are experts at keeping your glass full and the atmosphere lively.
-              </p>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="bg-black/30 p-6 rounded-lg"
-            >
-              <h3 className="text-xl font-semibold mb-4 text-white">Private Events</h3>
-              <p className="text-gray-400">
-                Book our space for private events, corporate team building, or special occasions. 
-                We offer custom packages including food, drinks, and dart instruction for groups of any size.
-              </p>
-            </motion.div>
-          </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <motion.div
+        initial={{ opacity: 0, x: -30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="relative h-[400px] rounded-lg overflow-hidden">
+          <Image 
+            src="/jax.jpg" // Replace with an image of your bar
+            alt="JAX Darts Bar"
+            fill
+            className="object-cover"
+          />
         </div>
-      </div>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, x: 30 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6, delay: 0.2 }}
+        className="space-y-6"
+      >
+        <h3 className="text-2xl font-semibold border-l-4 border-primary pl-3">The Premier Darts Destination</h3>
+        <div className="text-gray-300 space-y-4">
+          <p>
+            Established in January 1980, Jax has proudly served as a cornerstone of Long Island's dart community for over four decades. Our welcoming atmosphere has made us a beloved Stapleton institution where both seasoned players and newcomers gather to enjoy the timeless sport of darts.
+          </p>
+          <p>
+            We're passionate about cultivating the dart community through our comprehensive monthly tournaments and league opportunities. Whether you're looking to join a team or showcase your individual skills, we offer leagues tailored to every ability level—from beginners just learning the basics to experienced sharpshooters aiming for the bullseye.
+          </p>
+          <p>
+            Conveniently located just three minutes from the Long Island Expressway, Jax combines accessibility with tradition. Stop by to enjoy a cold drink, test your dart skills, and become part of a community that has been bringing people together through friendly competition for generations.
+          </p>
+        </div>
+      </motion.div>
+    </div>
+
+    
+  </div>
+</div>
+
 
       {/* Contact Section */}
       <div id="contact" ref={contactRef} className="py-16 border-t border-gray-800">
@@ -642,7 +603,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
                   </div>
                   <div>
                     <h4 className="font-medium text-white">Address</h4>
-                    <p className="text-gray-400">123 Main Street, Your City, ST 12345</p>
+                    <p className="text-gray-400">720 Portion Rd, Ronkonkoma, NY 11779</p>
                   </div>
                 </div>
                 
@@ -654,7 +615,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
                   </div>
                   <div>
                     <h4 className="font-medium text-white">Phone</h4>
-                    <p className="text-gray-400">(555) 123-4567</p>
+                    <p className="text-gray-400">(631) 467-9703</p>
                   </div>
                 </div>
                 
@@ -678,7 +639,7 @@ const handleContactSubmit = async (e: React.FormEvent) => {
                   </div>
                   <div>
                     <h4 className="font-medium text-white">Hours</h4>
-                    <p className="text-gray-400">Mon-Thu: 4pm-12am | Fri-Sun: 2pm-2am</p>
+                    <p className="text-gray-400">Mon-Thu: 2pm-12am | Fri & Sat: 12pm-12am |Sun: 12pm-10pm</p>
                   </div>
                 </div>
               </div>

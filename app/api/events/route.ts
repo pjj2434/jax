@@ -1,20 +1,26 @@
 // app/api/events/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { event, signup } from "@/db/schema";
+import { event, signup, schedule } from "@/db/schema";
 import { v4 as uuidv4 } from "uuid";
-import { eq, count } from "drizzle-orm";
+import { eq, count, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { auth } from "@/lib/auth";
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { deleteUploadThingFiles } from "@/lib/uploadthing";
 import { revalidatePath } from 'next/cache';
 
-// GET - Fetch events (public access)
+// GET - Fetch events (public access for unauthenticated, all events for authenticated users)
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     const sectionId = url.searchParams.get("sectionId");
+    
+    // Check if user is authenticated (admin)
+    const data = await auth.api.getSession({
+      headers: request.headers
+    });
+    const isAdmin = data && data.session;
     
     // Use unstable_cache for event fetches
     const getEvent = unstable_cache(
@@ -35,12 +41,17 @@ export async function GET(request: NextRequest) {
     );
 
     const getEvents = unstable_cache(
-      async (sectionId?: string) => {
+      async (sectionId?: string, includeInactive: boolean = false) => {
         let events;
         if (sectionId) {
           events = await db.select().from(event).where(eq(event.sectionId, sectionId));
         } else {
           events = await db.select().from(event);
+        }
+        
+        // Only filter out inactive events for public users
+        if (!includeInactive) {
+          events = events.filter(event => event.isActive);
         }
         const attendeeCounts = await db
           .select({ eventId: signup.eventId, count: count() })
@@ -72,7 +83,7 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json(result);
     }
-    const result = await getEvents(sectionId || undefined);
+    const result = await getEvents(sectionId || undefined, isAdmin);
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching events:", error);
@@ -113,7 +124,8 @@ export async function POST(request: NextRequest) {
       participantsPerSignup,
       featuredImage,
       galleryImages,
-      quickLinks
+      quickLinks,
+      addToSchedule
     } = body;
 
     if (!title) {
@@ -144,7 +156,46 @@ export async function POST(request: NextRequest) {
 
     revalidateTag('events');
     revalidateTag('event-detail');
+    revalidateTag('schedule');
     revalidatePath(`/events/${newEvent[0].id}`);
+
+    // Handle schedule addition if requested
+    console.log('POST API received addToSchedule:', addToSchedule); // Debug log
+    if (addToSchedule) {
+      try {
+        console.log('Adding new event to schedule:', newEvent[0].id); // Debug log
+        
+        try {
+          // Check if already in schedule
+          const existingSchedule = await db.select().from(schedule).where(eq(schedule.eventId, newEvent[0].id));
+          console.log('POST - Existing schedule items:', existingSchedule); // Debug log
+          
+          if (existingSchedule.length === 0) {
+            // Get the highest order number
+            const maxOrder = await db.select().from(schedule).orderBy(desc(schedule.order)).limit(1);
+            const nextOrder = maxOrder.length > 0 ? maxOrder[0].order + 1 : 0;
+            console.log('POST - Next order number:', nextOrder); // Debug log
+
+            // Add to schedule
+            const newScheduleItem = await db.insert(schedule).values({
+              id: uuidv4(),
+              eventId: newEvent[0].id,
+              order: nextOrder,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }).returning();
+            
+            console.log('POST - Successfully added to schedule:', newScheduleItem); // Debug log
+          } else {
+            console.log('POST - Event already in schedule, skipping'); // Debug log
+          }
+        } catch (dbError) {
+          console.error('POST - Database error adding to schedule:', dbError); // Debug log
+        }
+      } catch (error) {
+        console.error('Error adding to schedule:', error);
+      }
+    }
 
     return NextResponse.json(newEvent[0], { status: 201 });
   } catch (error) {
@@ -184,8 +235,12 @@ export async function PUT(request: NextRequest) {
       participantsPerSignup,
       featuredImage,
       galleryImages,
-      quickLinks
+      quickLinks,
+      addToSchedule
     } = body;
+
+    console.log('PUT API - Full body received:', body); // Debug log
+    console.log('PUT API - addToSchedule value:', addToSchedule); // Debug log
 
     if (!id || !title) {
       return NextResponse.json({ error: "ID and title are required" }, { status: 400 });
@@ -219,7 +274,52 @@ export async function PUT(request: NextRequest) {
 
     revalidateTag('events');
     revalidateTag('event-detail');
+    revalidateTag('schedule');
     revalidatePath(`/events/${updatedEvent[0].id}`);
+
+    // Handle schedule addition/removal if requested
+    console.log('API received addToSchedule:', addToSchedule); // Debug log
+    if (addToSchedule !== undefined) {
+      try {
+        if (addToSchedule) {
+          console.log('Adding event to schedule:', updatedEvent[0].id); // Debug log
+          
+          try {
+            // Check if already in schedule
+            const existingSchedule = await db.select().from(schedule).where(eq(schedule.eventId, updatedEvent[0].id));
+            console.log('Existing schedule items:', existingSchedule); // Debug log
+            
+            if (existingSchedule.length === 0) {
+              // Get the highest order number
+              const maxOrder = await db.select().from(schedule).orderBy(desc(schedule.order)).limit(1);
+              const nextOrder = maxOrder.length > 0 ? maxOrder[0].order + 1 : 0;
+              console.log('Next order number:', nextOrder); // Debug log
+
+              // Add to schedule
+              const newScheduleItem = await db.insert(schedule).values({
+                id: uuidv4(),
+                eventId: updatedEvent[0].id,
+                order: nextOrder,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              }).returning();
+              
+              console.log('Successfully added to schedule:', newScheduleItem); // Debug log
+            } else {
+              console.log('Event already in schedule, skipping'); // Debug log
+            }
+          } catch (dbError) {
+            console.error('Database error adding to schedule:', dbError); // Debug log
+          }
+        } else {
+          console.log('Removing event from schedule:', updatedEvent[0].id); // Debug log
+          // Remove from schedule
+          await db.delete(schedule).where(eq(schedule.eventId, updatedEvent[0].id));
+        }
+      } catch (error) {
+        console.error('Error updating schedule:', error);
+      }
+    }
 
     return NextResponse.json(updatedEvent[0]);
   } catch (error) {

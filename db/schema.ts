@@ -99,6 +99,15 @@ export const quickLink = sqliteTable("quick_link", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
 
+// New schema for schedule
+export const schedule = sqliteTable("schedule", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id").notNull().references(() => event.id, { onDelete: "cascade" }),
+  order: integer("order").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // Updated signup schema to handle multiple participants
 export const signup = sqliteTable("signup", {
   id: text("id").primaryKey(),
@@ -127,3 +136,5 @@ export type Signup = typeof signup.$inferSelect;
 export type NewSignup = typeof signup.$inferInsert;
 export type MessageBanner = typeof messageBanner.$inferSelect;
 export type NewMessageBanner = typeof messageBanner.$inferInsert;
+export type Schedule = typeof schedule.$inferSelect;
+export type NewSchedule = typeof schedule.$inferInsert;

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import { Menu, X } from "lucide-react";
 
@@ -15,12 +16,17 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Home", sectionId: "hero" },
   { label: "Events", sectionId: "events" },
+  { label: "Schedule", sectionId: "schedule" }, // This will be a link, not a section
   { label: "About", sectionId: "about" },
   { label: "contact", sectionId: "contact" },
   // Add more sections as needed
 ];
 
-export function Navbar() {
+interface NavbarProps {
+  hasActiveEvents?: boolean;
+}
+
+export function Navbar({ hasActiveEvents = true }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
@@ -168,18 +174,30 @@ export function Navbar() {
       {/* Desktop Navigation - Centered */}
       <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
         <div className="flex items-center space-x-8">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => scrollToSection(item.sectionId)}
-              className={`text-white hover:text-white/80 transition-colors font-medium px-2 py-1 ${
-                activeSection === item.sectionId 
-                  ? "border-b-2 border-primary text-primary" 
-                  : ""
-              }`}
-            >
-              {item.label}
-            </button>
+          {navItems
+            .filter(item => item.sectionId !== "events" || hasActiveEvents)
+            .map((item) => (
+            item.sectionId === "schedule" ? (
+              <Link
+                key={item.label}
+                href="/schedule"
+                className="text-white hover:text-white/80 transition-colors font-medium px-2 py-1"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <button
+                key={item.label}
+                onClick={() => scrollToSection(item.sectionId)}
+                className={`text-white hover:text-white/80 transition-colors font-medium px-2 py-1 ${
+                  activeSection === item.sectionId 
+                    ? "border-b-2 border-primary text-primary" 
+                    : ""
+                }`}
+              >
+                {item.label}
+              </button>
+            )
           ))}
         </div>
       </div>
@@ -236,20 +254,32 @@ export function Navbar() {
 
             {/* Menu Items */}
             <div className="flex flex-col items-center justify-center flex-1 space-y-8">
-              {navItems.map((item, i) => (
+              {navItems
+                .filter(item => item.sectionId !== "events" || hasActiveEvents)
+                .map((item, i) => (
                 <motion.div
                   key={item.label}
                   custom={i}
                   variants={itemVariants}
                 >
-                  <button
-                    onClick={() => scrollToSection(item.sectionId)}
-                    className={`text-white text-2xl font-medium hover:text-primary transition-colors ${
-                      activeSection === item.sectionId ? "text-primary" : ""
-                    }`}
-                  >
-                    {item.label}
-                  </button>
+                  {item.sectionId === "schedule" ? (
+                    <Link
+                      href="/schedule"
+                      className="text-white text-2xl font-medium hover:text-primary transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => scrollToSection(item.sectionId)}
+                      className={`text-white text-2xl font-medium hover:text-primary transition-colors ${
+                        activeSection === item.sectionId ? "text-primary" : ""
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>

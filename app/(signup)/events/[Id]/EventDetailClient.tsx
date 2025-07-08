@@ -143,7 +143,7 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
       <div className="container mx-auto p-4 py-8">
         {/* Back button */}
         <div className="mb-6">
-          <Button variant="outline" onClick={() => router.push("/")} className="border-gray-600 text-black hover:bg-gray-800">
+          <Button variant="outline" onClick={() => router.push("/")} className="border-gray-600 text-white hover:bg-gray-800 hover:text-white">
             ← Back to Events
           </Button>
         </div>
@@ -271,7 +271,7 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
             )}
 
             {event.eventDate && (
-              <Button variant="outline" onClick={() => window.open(`/api/events/${event.id}/calendar`, "_blank")} className="border-gray-600 text-black hover:bg-gray-800">
+              <Button variant="outline" onClick={() => window.open(`/api/events/${event.id}/calendar`, "_blank")} className="border-gray-600 text-white hover:bg-gray-800 hover:text-white">
                 Add to Calendar
               </Button>
             )}
@@ -292,7 +292,7 @@ export default function EventDetailClient({ event, quickLinks }: { event: any, q
                   fallbackCopyToClipboard(url);
                 }
               }}
-              className="border-gray-600 text-black hover:bg-gray-800"
+              className="border-gray-600 text-white hover:bg-gray-800 hover:text-white"
             >
               Share
             </Button>

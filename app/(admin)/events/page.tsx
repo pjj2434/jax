@@ -66,6 +66,7 @@ interface Event {
   participantsPerSignup?: number;
   featuredImage?: string;
   detailedContent?: string;
+  addToSchedule?: boolean;
 }
 
 export default function EventsPage() {
@@ -92,6 +93,7 @@ export default function EventsPage() {
     showCapacity: true,
     sectionId: "none",
     galleryImages: [],
+    addToSchedule: false,
   });
   
   // Media query for responsive design
@@ -226,9 +228,23 @@ export default function EventsPage() {
     }
   };
 
-  const handleEdit = (event: Event) => {
+  const handleEdit = async (event: Event) => {
     setEditingEvent(event);
-    setFormData({
+    
+    // Check if event is already in schedule
+    let isInSchedule = false;
+    try {
+      const scheduleRes = await fetch(`/api/schedule?eventId=${event.id}`);
+      if (scheduleRes.ok) {
+        const scheduleData = await scheduleRes.json();
+        isInSchedule = scheduleData.length > 0;
+        console.log('Schedule check for event:', event.id, 'isInSchedule:', isInSchedule, 'scheduleData:', scheduleData); // Debug log
+      }
+    } catch (error) {
+      console.error('Error checking schedule status:', error);
+    }
+    
+    const newFormData = {
       title: event.title,
       description: event.description || "",
       eventDate: event.eventDate ? new Date(event.eventDate).toISOString().split('T')[0] : "",
@@ -242,7 +258,11 @@ export default function EventsPage() {
         : (typeof event.galleryImages === 'string' && event.galleryImages.trim().startsWith('['))
           ? (() => { try { return JSON.parse(event.galleryImages); } catch { return []; } })()
           : [],
-    });
+      addToSchedule: isInSchedule,
+    };
+    
+    console.log('Setting form data for editing:', newFormData); // Debug log
+    setFormData(newFormData);
     setIsCreating(true);
   };
 
@@ -315,6 +335,7 @@ export default function EventsPage() {
       showCapacity: true,
       sectionId: "none",
       galleryImages: [],
+      addToSchedule: false,
     });
     setEditingEvent(null);
     setIsCreating(false);
@@ -352,15 +373,19 @@ export default function EventsPage() {
             </CardHeader>
             <CardContent>
               <EventForm
-                initialData={editingEvent}
+                initialData={editingEvent ? { ...editingEvent, addToSchedule: formData.addToSchedule } : undefined}
                 onSubmit={async (data) => {
                   try {
+                    console.log('Form data being submitted:', data); // Debug log
+                    console.log('Form data addToSchedule:', data.addToSchedule); // Debug log
                     if (editingEvent) {
                       // Update event
+                      const requestBody = { id: editingEvent.id, ...data };
+                      console.log('PUT request body:', requestBody); // Debug log
                       const res = await fetch("/api/events", {
                         method: "PUT",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: editingEvent.id, ...data }),
+                        body: JSON.stringify(requestBody),
                       });
                       if (!res.ok) throw new Error((await res.json()).error || "Failed to update event");
                       toast.success("Event updated successfully");
